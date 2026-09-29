@@ -1,0 +1,231 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Mail, Phone, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
+import { Dialog, Field, TextareaField } from "@/components/taller/ui";
+import { Button } from "@/components/ui/button";
+import { useRequireAuth } from "@/lib/auth";
+import { useData } from "@/lib/store";
+import { formatMoney } from "@/lib/taller-data";
+import { optional } from "@/lib/utils";
+import { ordersForCustomer, orderTotal, vehiclesForCustomer } from "@/lib/work-order";
+
+export const Route = createFileRoute("/clientes")({
+  head: () => ({
+    meta: [
+      { title: "Clientes | Ferro Taller" },
+      {
+        name: "description",
+        content:
+          "Cartera de clientes de Ferro Taller con contacto, vehículos e historial de gasto.",
+      },
+      { property: "og:title", content: "Clientes | Ferro Taller" },
+      {
+        property: "og:description",
+        content: "Gestión de clientes del taller.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: CustomersPage,
+});
+
+function CustomersPage() {
+  const { user } = useRequireAuth();
+  const { customers, vehicles, orders, addCustomer } = useData();
+  const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    notes: "",
+  });
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("es");
+    if (!query) return customers;
+    return customers.filter((customer) =>
+      [customer.name, customer.phone, customer.email]
+        .join(" ")
+        .toLocaleLowerCase("es")
+        .includes(query),
+    );
+  }, [customers, search]);
+
+  if (!user) return null;
+  if (user.role !== "admin") {
+    return (
+      <AppShell title="Clientes" subtitle="Acceso restringido">
+        <RestrictedAccess />
+      </AppShell>
+    );
+  }
+
+  function resetForm() {
+    setForm({ name: "", phone: "", email: "", notes: "" });
+  }
+
+  function addCustomerSubmit() {
+    addCustomer({
+      id: crypto.randomUUID(),
+      name: form.name,
+      phone: form.phone,
+      ...optional("email", form.email),
+      ...optional("notes", form.notes),
+    });
+    setDialogOpen(false);
+    resetForm();
+  }
+
+  return (
+    <AppShell
+      title="Clientes"
+      subtitle={`${customers.length} clientes en cartera`}
+      actions={
+        <Button variant="secondary" onClick={() => setDialogOpen(true)}>
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">Alta cliente</span>
+        </Button>
+      }
+    >
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar cliente"
+          className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
+        />
+      </div>
+
+      <section
+        className="overflow-x-auto rounded-lg border border-border bg-card/90"
+        aria-label="Listado de clientes"
+      >
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-border font-mono text-[9px] uppercase text-muted-foreground">
+              <th className="px-4 py-3 text-left font-medium">Cliente</th>
+              <th className="px-4 py-3 text-left font-medium">Contacto</th>
+              <th className="px-4 py-3 text-center font-medium">Vehículos</th>
+              <th className="px-4 py-3 text-center font-medium">Órdenes</th>
+              <th className="px-4 py-3 text-right font-medium">Total facturado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filtered.map((customer) => {
+              const customerOrders = ordersForCustomer(orders, customer.id);
+              const spent = customerOrders.reduce((sum, order) => sum + orderTotal(order), 0);
+              return (
+                <tr key={customer.id} className="transition-colors hover:bg-accent/60">
+                  <td className="px-4 py-3">
+                    <Link
+                      to="/clientes/$customerId"
+                      params={{ customerId: customer.id }}
+                      className="flex items-center gap-3"
+                    >
+                      <div className="grid size-9 place-items-center rounded-md bg-accent font-mono text-xs">
+                        {customer.name
+                          .split(" ")
+                          .map((part) => part[0])
+                          .slice(0, 2)
+                          .join("")}
+                      </div>
+                      <p className="font-semibold hover:text-primary">{customer.name}</p>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    <p className="flex items-center gap-1.5">
+                      <Phone className="size-3.5" />
+                      {customer.phone}
+                    </p>
+                    {customer.email && (
+                      <p className="mt-0.5 flex items-center gap-1.5">
+                        <Mail className="size-3.5" />
+                        {customer.email}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono">
+                    {vehiclesForCustomer(vehicles, customer.id).length}
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono">{customerOrders.length}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatMoney(spent)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            No hay clientes que coincidan con la búsqueda.
+          </div>
+        )}
+      </section>
+
+      <Dialog
+        title="Alta de cliente"
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          resetForm();
+        }}
+      >
+        <div className="grid gap-4 p-5">
+          <Field
+            label="Nombre completo"
+            name="name"
+            placeholder="Nombre del cliente"
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Teléfono"
+              name="phone"
+              placeholder="+34 600 000 000"
+              value={form.phone}
+              onChange={(event) => setForm({ ...form, phone: event.target.value })}
+              required
+            />
+            <Field
+              label="Correo (opcional)"
+              name="email"
+              type="email"
+              placeholder="cliente@correo.es"
+              value={form.email}
+              onChange={(event) => setForm({ ...form, email: event.target.value })}
+            />
+          </div>
+          <TextareaField
+            label="Notas (opcional)"
+            name="notes"
+            placeholder="Preferencias, observaciones…"
+            value={form.notes}
+            onChange={(event) => setForm({ ...form, notes: event.target.value })}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setDialogOpen(false);
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={addCustomerSubmit} disabled={!form.name || !form.phone}>
+              <Plus className="size-4" />
+              Guardar cliente
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </AppShell>
+  );
+}

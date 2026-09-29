@@ -1,0 +1,2 @@
+- Keep the product as a Spanish-first, dark industrial workshop interface because technicians need rapid, high-contrast scanning.
+- Real persistence (PostgreSQL via Neon + Drizzle) is in progress — see [DEPLOY.md](DEPLOY.md) for the database setup and the current plan for the phased rollout. Until the backend is fully wired up, some data still lives in frontend modules (`src/lib/taller-data.ts`).
