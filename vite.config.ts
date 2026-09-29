@@ -4,11 +4,16 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
-// Plain TanStack Start + Vite config, deploying as a standard Node.js server
-// (see DEPLOY.md) — this replaced @lovable.dev/vite-tanstack-config, which
-// used to wire up the same underlying plugins but defaulted the Nitro build to
-// Cloudflare Workers and added Lovable-editor-only dev-server behavior that
-// doesn't apply once the project isn't going through Lovable.
+// Plain TanStack Start + Vite config (see DEPLOY.md) — this replaced
+// @lovable.dev/vite-tanstack-config, which used to wire up the same underlying
+// plugins but defaulted the Nitro build to Cloudflare Workers and added
+// Lovable-editor-only dev-server behavior that doesn't apply once the project
+// isn't going through Lovable.
+//
+// Two deploy targets share this one config: Vercel for staging, a plain VPS for
+// production. `VERCEL=1` is a system env var Vercel itself sets on every build
+// on its platform (never set locally or on the VPS), so the right Nitro preset
+// is picked automatically — nothing to configure per environment.
 export default defineConfig(async ({ command }) => ({
   plugins: [
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
@@ -21,7 +26,13 @@ export default defineConfig(async ({ command }) => ({
       },
     }),
     // Nitro's build-time bundling only matters for `vite build`, not `vite dev`.
-    ...(command === "build" ? [(await import("nitro/vite")).nitro({ preset: "node-server" })] : []),
+    ...(command === "build"
+      ? [
+          (await import("nitro/vite")).nitro({
+            preset: process.env["VERCEL"] ? "vercel" : "node-server",
+          }),
+        ]
+      : []),
     viteReact(),
   ],
   resolve: {

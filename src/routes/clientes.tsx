@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Mail, Phone, Plus, Search } from "lucide-react";
+import { ChevronRight, Mail, Phone, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
@@ -102,67 +102,75 @@ function CustomersPage() {
       </div>
 
       <section
-        className="overflow-x-auto rounded-lg border border-border bg-card/90"
+        className="rounded-lg border border-border bg-card/90"
         aria-label="Listado de clientes"
       >
-        <table className="w-full min-w-[720px] text-sm">
-          <thead>
-            <tr className="border-b border-border font-mono text-[9px] uppercase text-muted-foreground">
-              <th className="px-4 py-3 text-left font-medium">Cliente</th>
-              <th className="px-4 py-3 text-left font-medium">Contacto</th>
-              <th className="px-4 py-3 text-center font-medium">Vehículos</th>
-              <th className="px-4 py-3 text-center font-medium">Órdenes</th>
-              <th className="px-4 py-3 text-right font-medium">Total facturado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {filtered.map((customer) => {
-              const customerOrders = ordersForCustomer(orders, customer.id);
-              const spent = customerOrders.reduce((sum, order) => sum + orderTotal(order), 0);
-              return (
-                <tr key={customer.id} className="transition-colors hover:bg-accent/60">
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/clientes/$customerId"
-                      params={{ customerId: customer.id }}
-                      className="flex items-center gap-3"
-                    >
-                      <div className="grid size-9 place-items-center rounded-md bg-accent font-mono text-xs">
-                        {customer.name
-                          .split(" ")
-                          .map((part) => part[0])
-                          .slice(0, 2)
-                          .join("")}
-                      </div>
-                      <p className="font-semibold hover:text-primary">{customer.name}</p>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    <p className="flex items-center gap-1.5">
-                      <Phone className="size-3.5" />
-                      {customer.phone}
-                    </p>
-                    {customer.email && (
-                      <p className="mt-0.5 flex items-center gap-1.5">
-                        <Mail className="size-3.5" />
-                        {customer.email}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-border font-mono text-[9px] uppercase text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium">Cliente</th>
+                <th className="px-4 py-3 text-left font-medium">Contacto</th>
+                <th className="px-4 py-3 text-center font-medium">Vehículos</th>
+                <th className="px-4 py-3 text-center font-medium">Órdenes</th>
+                <th className="px-4 py-3 text-right font-medium">Total facturado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((customer) => {
+                const customerOrders = ordersForCustomer(orders, customer.id);
+                const spent = customerOrders.reduce((sum, order) => sum + orderTotal(order), 0);
+                return (
+                  <tr key={customer.id} className="transition-colors hover:bg-accent/60">
+                    <td className="px-4 py-3">
+                      <Link
+                        to="/clientes/$customerId"
+                        params={{ customerId: customer.id }}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="grid size-9 place-items-center rounded-md bg-accent font-mono text-xs">
+                          {customer.name
+                            .split(" ")
+                            .map((part) => part[0])
+                            .slice(0, 2)
+                            .join("")}
+                        </div>
+                        <p className="font-semibold hover:text-primary">{customer.name}</p>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="size-3.5" />
+                        {customer.phone}
                       </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono">
-                    {vehiclesForCustomer(vehicles, customer.id).length}
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono">{customerOrders.length}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatMoney(spent)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No hay clientes que coincidan con la búsqueda.
-          </div>
+                      {customer.email && (
+                        <p className="mt-0.5 flex items-center gap-1.5">
+                          <Mail className="size-3.5" />
+                          {customer.email}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center font-mono">
+                      {vehiclesForCustomer(vehicles, customer.id).length}
+                    </td>
+                    <td className="px-4 py-3 text-center font-mono">{customerOrders.length}</td>
+                    <td className="px-4 py-3 text-right font-mono">{formatMoney(spent)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No hay clientes que coincidan con la búsqueda.
+            </div>
+          )}
+        </div>
+        {filtered.length > 0 && (
+          <p className="flex items-center justify-center gap-1 border-t border-border py-1.5 text-[10px] text-muted-foreground sm:hidden">
+            Desliza para ver más
+            <ChevronRight className="size-3" />
+          </p>
         )}
       </section>
 

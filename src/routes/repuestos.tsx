@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Package, Plus, Search, ShieldCheck } from "lucide-react";
+import { ChevronRight, Package, Plus, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
@@ -132,54 +132,62 @@ function PartsPage() {
       </div>
 
       <section
-        className="overflow-x-auto rounded-lg border border-border bg-card/90"
+        className="rounded-lg border border-border bg-card/90"
         aria-label="Catálogo de repuestos"
       >
-        <table className="w-full min-w-[720px] text-sm">
-          <thead>
-            <tr className="border-b border-border font-mono text-[9px] uppercase text-muted-foreground">
-              <th className="px-4 py-3 text-left font-medium">SKU</th>
-              <th className="px-4 py-3 text-left font-medium">Repuesto</th>
-              <th className="px-4 py-3 text-right font-medium">Costo taller</th>
-              <th className="px-4 py-3 text-right font-medium">Precio cliente</th>
-              <th className="px-4 py-3 text-right font-medium">Margen</th>
-              <th className="px-4 py-3 text-center font-medium">Garantía</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {filtered.map((part) => (
-              <tr key={part.id} className="transition-colors hover:bg-accent/60">
-                <td className="px-4 py-3 font-mono">{part.sku ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Package className="size-4 text-muted-foreground" />
-                    {part.name}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-muted-foreground">
-                  {formatMoney(part.workshopCost)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {formatMoney(part.customerPrice)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-status-success">
-                  {formatMoney(part.customerPrice - part.workshopCost)}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {part.warranty ? (
-                    <ShieldCheck className="mx-auto size-4 text-primary" />
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-border font-mono text-[9px] uppercase text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium">SKU</th>
+                <th className="px-4 py-3 text-left font-medium">Repuesto</th>
+                <th className="px-4 py-3 text-right font-medium">Costo taller</th>
+                <th className="px-4 py-3 text-right font-medium">Precio cliente</th>
+                <th className="px-4 py-3 text-right font-medium">Margen</th>
+                <th className="px-4 py-3 text-center font-medium">Garantía</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No hay repuestos que coincidan con la búsqueda.
-          </div>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((part) => (
+                <tr key={part.id} className="transition-colors hover:bg-accent/60">
+                  <td className="px-4 py-3 font-mono">{part.sku ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="size-4 text-muted-foreground" />
+                      {part.name}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                    {formatMoney(part.workshopCost)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatMoney(part.customerPrice)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-status-success">
+                    {formatMoney(part.customerPrice - part.workshopCost)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {part.warranty ? (
+                      <ShieldCheck className="mx-auto size-4 text-primary" />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No hay repuestos que coincidan con la búsqueda.
+            </div>
+          )}
+        </div>
+        {filtered.length > 0 && (
+          <p className="flex items-center justify-center gap-1 border-t border-border py-1.5 text-[10px] text-muted-foreground sm:hidden">
+            Desliza para ver más
+            <ChevronRight className="size-3" />
+          </p>
         )}
       </section>
 

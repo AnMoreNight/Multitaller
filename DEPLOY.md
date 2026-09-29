@@ -77,21 +77,56 @@ wired to the database yet. Once auth and the data layer are rebuilt against
 Postgres (see the pending work above), this section will get an update with
 real login credentials and a `npm run db:seed` step.
 
-## 4. Production deployment
+## 4. Deployment targets: Vercel (staging) + a VPS (production)
 
-⚠️ **This section is out of date and being rewritten.** The app no longer goes
-through Lovable, which is what previously fixed the build/deploy target to
-Cloudflare Workers (and is why Neon's HTTP driver was chosen in the first
-place — Workers can't hold a normal database connection open). Now that
-that's gone, the actual hosting target needs deciding before this section
-means anything again. Whatever we land on, one thing stays true regardless:
-**migrations don't run themselves** — `npm run db:migrate` has to be run
-against the production `DATABASE_URL` (from a local machine or CI) whenever
-the schema changes.
+Two different targets share the exact same codebase and build command — Nitro
+(the build tool under TanStack Start) picks the right output format
+automatically based on where it's running, via `vite.config.ts`:
 
-Neon supports branching a database (like a git branch) if you want separate
-dev/staging/production databases without paying for multiple projects — worth
-using once this moves past local development.
+```ts
+preset: process.env["VERCEL"] ? "vercel" : "node-server"
+```
+
+`VERCEL=1` is a variable Vercel's own platform sets on every build it runs —
+never set locally or on a VPS — so nothing needs configuring per environment;
+the same `npm run build` just does the right thing in each place. Verified
+both actually build correctly: a plain build produces `.output/server/index.mjs`
+(runnable with `node`), and `VERCEL=1 npm run build` produces
+`.vercel/output/` in Vercel's Build Output API v3 format (a serverless
+function + static assets) — exactly what Vercel expects, no `vercel.json`
+needed.
+
+### Staging on Vercel
+
+1. Import the GitHub repo in Vercel's dashboard. It doesn't need to recognize
+   "TanStack Start" as a framework — the Build Output API structure Nitro
+   produces is enough for Vercel to serve it correctly regardless.
+2. Add `DATABASE_URL` under the project's Environment Variables. Point it at a
+   separate Neon **branch** (see below) rather than the same database as
+   production.
+3. Deploy. Every push (or PR, depending on your Vercel settings) rebuilds and
+   redeploys automatically.
+
+### Production on your VPS
+
+1. `npm run build` on the VPS (or in CI, then copy `.output/` over) — with no
+   `VERCEL` env var set, this produces the plain Node build.
+2. Run it with `node .output/server/index.mjs`, behind whatever you normally
+   use to keep a Node process alive and behind TLS (pm2/systemd + nginx or
+   Caddy as a reverse proxy — not set up yet, since it depends on the VPS).
+3. Set `DATABASE_URL` as a real environment variable on the VPS (systemd unit,
+   `.env` loaded by your process manager, etc.) pointed at the production Neon
+   branch.
+
+### Database: one Neon project, two branches
+
+Neon supports branching a database like a git branch, so staging and
+production can be isolated without paying for two separate projects:
+one branch (e.g. `main`) for production, another (e.g. `staging`) for Vercel —
+each gets its own `DATABASE_URL`. Whichever branch changes, remember:
+**migrations don't run themselves** — `npm run db:migrate` has to be run by
+hand (or in CI) against that branch's `DATABASE_URL` whenever the schema
+changes; Vercel and a VPS both just run the already-built app.
 
 ## What's next
 
