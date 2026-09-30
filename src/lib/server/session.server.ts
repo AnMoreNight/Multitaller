@@ -4,19 +4,45 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { sessions } from "@/lib/db/schema";
 
-// __Host- prefix binds the cookie to this exact origin (no Domain, Path must
-// be "/", Secure must be set) — a subdomain can't forge or read it.
-const SESSION_COOKIE = "__Host-session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
+// __Host- prefix binds the cookie to this exact origin (no Domain, Path must
+// be "/", Secure must be set) — a subdomain can't forge or read it. Browsers
+// enforce this themselves: a __Host- cookie without Secure is silently
+// dropped, never stored — which is exactly what happens testing over plain
+// HTTP (a bare VPS IP with no TLS yet), so login looks like it works
+// (200 OK, cookie appears in the response) but never actually persists a
+// session, bouncing back to /login on the next request.
+//
+// INSECURE_COOKIES=true is a temporary escape hatch for exactly that case:
+// drops both the prefix and Secure together (can't drop just one — a
+// __Host- cookie without Secure isn't a relaxed version, it's just invalid
+// and gets rejected outright). Set it only while testing a deployment that
+// has no HTTPS yet. Unset it — or better, just finish the certbot step —
+// before anything real touches that deployment; it weakens session cookies
+// to be interceptable by anyone on the same network path.
+function isInsecureCookiesMode(): boolean {
+  return process.env["INSECURE_COOKIES"] === "true";
+}
+
+function sessionCookieName(): string {
+  return isInsecureCookiesMode() ? "session" : "__Host-session";
+}
+
 export function readSessionToken(): string | undefined {
-  return getCookie(SESSION_COOKIE);
+  return getCookie(sessionCookieName());
 }
 
 export function setSessionCookie(token: string) {
-  setCookie(SESSION_COOKIE, token, {
+  const insecure = isInsecureCookiesMode();
+  if (insecure) {
+    console.warn(
+      "[session] INSECURE_COOKIES=true — session cookie is not Secure. Only ever use this for HTTP-only testing, never a real deployment.",
+    );
+  }
+  setCookie(sessionCookieName(), token, {
     httpOnly: true,
-    secure: true,
+    secure: !insecure,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,
@@ -26,7 +52,7 @@ export function setSessionCookie(token: string) {
 export function clearSessionCookie() {
   // __Host- requires Secure on every Set-Cookie for this name, including the
   // clearing one, or the browser rejects it and the stale cookie lingers.
-  deleteCookie(SESSION_COOKIE, { path: "/", secure: true });
+  deleteCookie(sessionCookieName(), { path: "/", secure: !isInsecureCookiesMode() });
 }
 
 export async function createSession(userId: string): Promise<string> {
