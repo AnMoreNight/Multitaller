@@ -20,9 +20,16 @@ export default defineConfig(async ({ command }) => ({
     tailwindcss(),
     tanstackStart({
       server: { entry: "server" },
+      // Only the raw DB connection and cookie/session helpers are blocked here —
+      // plain modules with no createServerFn/createMiddleware wrapper, so
+      // nothing erases them from a client bundle if something imports them
+      // directly. `*.functions.ts` (createServerFn) and auth-middleware.ts
+      // (createMiddleware) are deliberately NOT matched: both are factory files
+      // the client is meant to import — that's how the RPC-stub mechanism
+      // works — and blocking them broke every server function/middleware call.
       importProtection: {
         behavior: "error",
-        client: { files: ["**/server/**"], specifiers: ["server-only"] },
+        client: { files: ["**/db/client.ts", "**/session.server.ts"], specifiers: ["server-only"] },
       },
     }),
     // Nitro's build-time bundling only matters for `vite build`, not `vite dev`.

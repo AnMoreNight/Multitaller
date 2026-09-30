@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Dialog, Field } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
   const { user, updateUser } = useAuth();
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Re-seed the form from the current user each time the dialog opens, so it
   // doesn't show stale values from a previous open (or from another account,
@@ -22,9 +24,16 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!user) return null;
 
-  function save(target: AppUser) {
-    updateUser(target.id, { name: name.trim(), title: title.trim() });
-    onClose();
+  async function save(target: AppUser) {
+    setSaving(true);
+    try {
+      await updateUser(target.id, { name: name.trim(), title: title.trim() });
+      onClose();
+    } catch {
+      toast.error("No se pudo guardar el perfil. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -59,8 +68,8 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={!name.trim() || !title.trim()}>
-            Guardar cambios
+          <Button type="submit" disabled={!name.trim() || !title.trim() || saving}>
+            {saving ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
       </form>

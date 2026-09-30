@@ -19,6 +19,7 @@ import { Route as RepuestosRouteImport } from './routes/repuestos'
 import { Route as VehiculosRouteImport } from './routes/vehiculos'
 import { Route as ClientesCustomerIdRouteImport } from './routes/clientes_.$customerId'
 import { Route as OrdenesOrderIdRouteImport } from './routes/ordenes_.$orderId'
+import { Route as SystemWorkshopsRouteImport } from './routes/system.workshops'
 import { Route as VehiculosVehicleIdRouteImport } from './routes/vehiculos_.$vehicleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +72,11 @@ const OrdenesOrderIdRoute = OrdenesOrderIdRouteImport.update({
   path: '/ordenes/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SystemWorkshopsRoute = SystemWorkshopsRouteImport.update({
+  id: '/system/workshops',
+  path: '/system/workshops',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VehiculosVehicleIdRoute = VehiculosVehicleIdRouteImport.update({
   id: '/vehiculos_/$vehicleId',
   path: '/vehiculos/$vehicleId',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/vehiculos': typeof VehiculosRoute
   '/clientes/$customerId': typeof ClientesCustomerIdRoute
   '/ordenes/$orderId': typeof OrdenesOrderIdRoute
+  '/system/workshops': typeof SystemWorkshopsRoute
   '/vehiculos/$vehicleId': typeof VehiculosVehicleIdRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/vehiculos': typeof VehiculosRoute
   '/clientes/$customerId': typeof ClientesCustomerIdRoute
   '/ordenes/$orderId': typeof OrdenesOrderIdRoute
+  '/system/workshops': typeof SystemWorkshopsRoute
   '/vehiculos/$vehicleId': typeof VehiculosVehicleIdRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/vehiculos': typeof VehiculosRoute
   '/clientes_/$customerId': typeof ClientesCustomerIdRoute
   '/ordenes_/$orderId': typeof OrdenesOrderIdRoute
+  '/system/workshops': typeof SystemWorkshopsRoute
   '/vehiculos_/$vehicleId': typeof VehiculosVehicleIdRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/vehiculos'
     | '/clientes/$customerId'
     | '/ordenes/$orderId'
+    | '/system/workshops'
     | '/vehiculos/$vehicleId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/vehiculos'
     | '/clientes/$customerId'
     | '/ordenes/$orderId'
+    | '/system/workshops'
     | '/vehiculos/$vehicleId'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/vehiculos'
     | '/clientes_/$customerId'
     | '/ordenes_/$orderId'
+    | '/system/workshops'
     | '/vehiculos_/$vehicleId'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   VehiculosRoute: typeof VehiculosRoute
   ClientesCustomerIdRoute: typeof ClientesCustomerIdRoute
   OrdenesOrderIdRoute: typeof OrdenesOrderIdRoute
+  SystemWorkshopsRoute: typeof SystemWorkshopsRoute
   VehiculosVehicleIdRoute: typeof VehiculosVehicleIdRoute
 }
 
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdenesOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/system/workshops': {
+      id: '/system/workshops'
+      path: '/system/workshops'
+      fullPath: '/system/workshops'
+      preLoaderRoute: typeof SystemWorkshopsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vehiculos_/$vehicleId': {
       id: '/vehiculos_/$vehicleId'
       path: '/vehiculos/$vehicleId'
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   VehiculosRoute: VehiculosRoute,
   ClientesCustomerIdRoute: ClientesCustomerIdRoute,
   OrdenesOrderIdRoute: OrdenesOrderIdRoute,
+  SystemWorkshopsRoute: SystemWorkshopsRoute,
   VehiculosVehicleIdRoute: VehiculosVehicleIdRoute,
 }
 export const routeTree = rootRouteImport

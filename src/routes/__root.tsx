@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "../lib/auth";
 import { DataProvider } from "../lib/store";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 function NotFoundComponent() {
@@ -135,6 +136,7 @@ function RootComponent() {
           <TooltipProvider delayDuration={200}>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <Toaster />
           </TooltipProvider>
         </DataProvider>
       </AuthProvider>

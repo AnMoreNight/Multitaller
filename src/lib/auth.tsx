@@ -1,91 +1,119 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { createContext, useContext, type ReactNode } from "react";
+import { useEffect } from "react";
 
-import { demoUsers, demoWorkshop, type AppUser } from "@/lib/taller-data";
+import { getSession, login as loginFn, logout as logoutFn } from "@/lib/server/auth.functions";
+import {
+  createUser,
+  listUsers,
+  removeUser as removeUserFn,
+  updateUser as updateUserFn,
+} from "@/lib/server/users.functions";
+import type { AppUser, Role } from "@/lib/taller-data";
 
-// Demo-only session: the real Postgres-backed auth is still being wired up (see
-// DEPLOY.md / the persistence plan). This picks one of the seeded accounts and
-// remembers it in localStorage so routes can be protected and the UI can branch
-// on role, ready to swap for real auth once the backend lands.
-const SESSION_KEY = "ferro-taller-session";
+// A workshop admin can only ever create or promote to admin/worker — system_admin
+// is platform-level and only ever created via the seed script.
+export type WorkshopRole = Exclude<Role, "system_admin">;
+
+type UserChanges = Partial<{
+  name: string;
+  title: string;
+  role: WorkshopRole;
+  canChangeOrderStatus: boolean;
+}>;
+
+type NewUserInput = {
+  name: string;
+  title: string;
+  role: WorkshopRole;
+  canChangeOrderStatus: boolean;
+  email: string;
+  password: string;
+};
 
 type AuthContextValue = {
   user: AppUser | null;
-  /**
-   * Every seeded account, unfiltered by workshop — the login picker needs the
-   * full roster before anyone is signed in, so filtering to the current
-   * user's workshop happens at the point of use (e.g. the staff page), not
-   * here.
-   */
+  /** Every user in the caller's own workshop — empty until signed in (system_admin has none, by design). */
   users: AppUser[];
-  /** False until the client has checked localStorage for an existing session. */
+  /** False until the initial session check (a real network round-trip now) has resolved. */
   ready: boolean;
-  login: (userId: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   /** Self-service profile edits and admin staff management both go through this. */
-  updateUser: (
-    userId: string,
-    changes: Partial<Pick<AppUser, "name" | "title" | "role" | "canChangeOrderStatus">>,
-  ) => void;
-  /** Stamps workshopId from the current session — callers never supply it. */
-  addUser: (user: Omit<AppUser, "workshopId">) => void;
-  removeUser: (userId: string) => void;
+  updateUser: (userId: string, changes: UserChanges) => Promise<void>;
+  addUser: (user: NewUserInput) => Promise<void>;
+  removeUser: (userId: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<AppUser[]>(demoUsers);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    setUserId(window.localStorage.getItem(SESSION_KEY));
-    setReady(true);
-  }, []);
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
+  const user = sessionQuery.data?.user ?? null;
+  const ready = !sessionQuery.isPending;
+  const workshopId = user?.workshopId;
 
-  const user = userId ? (users.find((u) => u.id === userId) ?? null) : null;
+  const usersQuery = useQuery({
+    queryKey: ["workshop", workshopId, "users"],
+    queryFn: () => listUsers(),
+    enabled: Boolean(workshopId),
+  });
+  const users = usersQuery.data ?? [];
 
-  function login(nextUserId: string) {
-    const exists = users.some((u) => u.id === nextUserId);
-    if (!exists) return;
-    setUserId(nextUserId);
-    window.localStorage.setItem(SESSION_KEY, nextUserId);
+  const usersKey = ["workshop", workshopId, "users"];
+
+  const loginMutation = useMutation({
+    mutationFn: (input: { email: string; password: string }) => loginFn({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["session"] }),
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: () => logoutFn(),
+    // Never let the next person to sign in on this device see a flash of the
+    // previous tenant's cached data.
+    onSuccess: () => queryClient.clear(),
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: (input: NewUserInput) => createUser({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKey }),
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: (input: { userId: string; changes: UserChanges }) => updateUserFn({ data: input }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: usersKey });
+      if (updated.id === user?.id) queryClient.invalidateQueries({ queryKey: ["session"] });
+    },
+  });
+
+  const removeUserMutation = useMutation({
+    mutationFn: (userId: string) => removeUserFn({ data: { userId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKey }),
+  });
+
+  async function login(email: string, password: string) {
+    await loginMutation.mutateAsync({ email, password });
   }
-
-  function logout() {
-    setUserId(null);
-    window.localStorage.removeItem(SESSION_KEY);
+  async function logout() {
+    await logoutMutation.mutateAsync();
   }
-
-  function updateUser(
-    targetId: string,
-    changes: Partial<Pick<AppUser, "name" | "title" | "role" | "canChangeOrderStatus">>,
-  ) {
-    setUsers((current) => current.map((u) => (u.id === targetId ? { ...u, ...changes } : u)));
+  async function updateUser(userId: string, changes: UserChanges) {
+    await updateUserMutation.mutateAsync({ userId, changes });
   }
-
-  function addUser(newUser: Omit<AppUser, "workshopId">) {
-    const workshopId = user?.workshopId ?? demoWorkshop.id;
-    setUsers((current) => [...current, { ...newUser, workshopId }]);
+  async function addUser(newUser: NewUserInput) {
+    await createUserMutation.mutateAsync(newUser);
   }
-
-  function removeUser(targetId: string) {
-    setUsers((current) => current.filter((u) => u.id !== targetId));
+  async function removeUser(userId: string) {
+    await removeUserMutation.mutateAsync(userId);
   }
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        users,
-        ready,
-        login,
-        logout,
-        updateUser,
-        addUser,
-        removeUser,
-      }}
+      value={{ user, users, ready, login, logout, updateUser, addUser, removeUser }}
     >
       {children}
     </AuthContext.Provider>
@@ -99,18 +127,35 @@ export function useAuth(): AuthContextValue {
 }
 
 /**
- * Same as `useAuth`, but also redirects to /login once the session check has
- * finished and there's no user. Route components that bail out with an early
- * `return` before ever rendering <AppShell> (which has its own copy of this
- * effect) must use this instead of `useAuth`, or that redirect never runs and
- * an unauthenticated visit to a protected route just renders a blank page.
+ * Same as `useAuth`, but also redirects once the session check has resolved:
+ * to /login with no session, or to /system/workshops for a system_admin, who
+ * has no workshop dashboard to see. Route components that bail out with an
+ * early `return` before ever rendering <AppShell> must use this instead of
+ * `useAuth`, or the redirect never runs.
  */
 export function useRequireAuth(): AuthContextValue {
   const auth = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (auth.ready && !auth.user) navigate({ to: "/login" });
+    if (!auth.ready) return;
+    if (!auth.user) navigate({ to: "/login" });
+    else if (auth.user.role === "system_admin") navigate({ to: "/system/workshops" });
+  }, [auth.ready, auth.user, navigate]);
+
+  return auth;
+}
+
+/** The guard for /system/workshops itself — deliberately separate from useRequireAuth,
+ * which would otherwise redirect a system_admin straight back to this same page. */
+export function useRequireSystemAdmin(): AuthContextValue {
+  const auth = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!auth.ready) return;
+    if (!auth.user) navigate({ to: "/login" });
+    else if (auth.user.role !== "system_admin") navigate({ to: "/" });
   }, [auth.ready, auth.user, navigate]);
 
   return auth;

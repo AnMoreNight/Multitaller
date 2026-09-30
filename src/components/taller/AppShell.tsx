@@ -17,7 +17,7 @@ import { ProfileDialog } from "@/components/taller/ProfileDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { demoWorkshop, type Role } from "@/lib/taller-data";
+import type { Role } from "@/lib/taller-data";
 
 type NavItem = {
   label: string;
@@ -89,7 +89,7 @@ export function AppShell({
               F
             </div>
             <div className="leading-tight">
-              <p className="font-display text-xl font-semibold uppercase">{demoWorkshop.name}</p>
+              <p className="font-display text-xl font-semibold uppercase">{user.workshopName}</p>
               <p className="font-mono text-[9px] uppercase text-muted-foreground">
                 Sucursal Centro
               </p>
@@ -166,8 +166,8 @@ export function AppShell({
               variant="ghost"
               size="icon"
               aria-label="Cerrar sesión"
-              onClick={() => {
-                logout();
+              onClick={async () => {
+                await logout();
                 navigate({ to: "/login" });
               }}
             >

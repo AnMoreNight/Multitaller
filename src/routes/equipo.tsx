@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, ShieldCheck, Trash2, Wrench } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { CheckboxRow, Dialog, Field, SelectField } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
-import { useRequireAuth } from "@/lib/auth";
-import type { Role } from "@/lib/taller-data";
+import { useRequireAuth, type WorkshopRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/equipo")({
   head: () => ({
@@ -29,10 +29,13 @@ const roleOptions: { value: string; label: string }[] = [
 function TeamPage() {
   const { user, users, addUser, updateUser, removeUser } = useRequireAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     title: "",
-    role: "worker" as Role,
+    email: "",
+    password: "",
+    role: "worker" as WorkshopRole,
     canChangeOrderStatus: true,
   });
 
@@ -45,28 +48,54 @@ function TeamPage() {
     );
   }
 
-  const team = users.filter((member) => member.workshopId === user.workshopId);
+  const team = users;
   const adminCount = team.filter((member) => member.role === "admin").length;
 
   function resetForm() {
     setForm({
       name: "",
       title: "",
+      email: "",
+      password: "",
       role: "worker",
       canChangeOrderStatus: true,
     });
   }
 
-  function submit() {
-    addUser({
-      id: crypto.randomUUID(),
-      name: form.name,
-      title: form.title,
-      role: form.role,
-      canChangeOrderStatus: form.canChangeOrderStatus,
-    });
-    setDialogOpen(false);
-    resetForm();
+  async function submit() {
+    setSubmitting(true);
+    try {
+      await addUser({
+        name: form.name,
+        title: form.title,
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+        canChangeOrderStatus: form.canChangeOrderStatus,
+      });
+      setDialogOpen(false);
+      resetForm();
+    } catch {
+      toast.error("No se pudo crear la cuenta. Verifica el correo y vuelve a intentar.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdate(memberId: string, changes: Parameters<typeof updateUser>[1]) {
+    try {
+      await updateUser(memberId, changes);
+    } catch {
+      toast.error("No se pudo actualizar el miembro del equipo.");
+    }
+  }
+
+  async function handleRemove(memberId: string) {
+    try {
+      await removeUser(memberId);
+    } catch {
+      toast.error("No se pudo quitar al miembro del equipo.");
+    }
   }
 
   return (
@@ -81,9 +110,8 @@ function TeamPage() {
       }
     >
       <p className="text-xs text-muted-foreground">
-        Esta es una demo sin servidor todavía: las cuentas viven en esta sesión del navegador (ver
-        AGENTS.md). El administrador ve todo y puede editar; un trabajador solo ve vehículos y
-        estados, y solo puede cambiar el estado de una orden si tiene ese permiso activado abajo.
+        El administrador ve todo y puede editar; un trabajador solo ve vehículos y estados, y solo
+        puede cambiar el estado de una orden si tiene ese permiso activado abajo.
       </p>
 
       <section className="grid gap-3">
@@ -118,7 +146,7 @@ function TeamPage() {
               <div className="w-40">
                 <SelectField
                   value={member.role}
-                  onChange={(role) => updateUser(member.id, { role: role as Role })}
+                  onChange={(role) => handleUpdate(member.id, { role: role as WorkshopRole })}
                   options={roleOptions}
                   disabled={isSelf || isLastAdmin}
                 />
@@ -129,7 +157,7 @@ function TeamPage() {
                   label="Puede cambiar estado"
                   description="Permite avanzar el estado de una orden sin ser administrador."
                   checked={member.canChangeOrderStatus}
-                  onChange={(checked) => updateUser(member.id, { canChangeOrderStatus: checked })}
+                  onChange={(checked) => handleUpdate(member.id, { canChangeOrderStatus: checked })}
                 />
               </div>
 
@@ -138,7 +166,7 @@ function TeamPage() {
                 size="icon"
                 aria-label={`Quitar a ${member.name}`}
                 disabled={isSelf || isLastAdmin}
-                onClick={() => removeUser(member.id)}
+                onClick={() => handleRemove(member.id)}
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -172,10 +200,28 @@ function TeamPage() {
             onChange={(event) => setForm({ ...form, title: event.target.value })}
             required
           />
+          <Field
+            label="Correo"
+            name="email"
+            type="email"
+            placeholder="correo@taller.com"
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            required
+          />
+          <Field
+            label="Contraseña"
+            name="password"
+            type="password"
+            placeholder="Mínimo 8 caracteres"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            required
+          />
           <SelectField
             label="Rol"
             value={form.role}
-            onChange={(role) => setForm({ ...form, role: role as Role })}
+            onChange={(role) => setForm({ ...form, role: role as WorkshopRole })}
             options={roleOptions}
           />
           <CheckboxRow
@@ -195,9 +241,15 @@ function TeamPage() {
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={submit} disabled={!form.name || !form.title}>
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={
+                !form.name || !form.title || !form.email || form.password.length < 8 || submitting
+              }
+            >
               <Plus className="size-4" />
-              Guardar miembro
+              {submitting ? "Guardando…" : "Guardar miembro"}
             </Button>
           </div>
         </div>

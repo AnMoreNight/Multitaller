@@ -14,49 +14,27 @@ export type Workshop = {
 };
 
 export const demoWorkshop: Workshop = {
-  id: "w1",
+  id: "00000000-0000-0000-0000-000000000001",
   name: "Ferro Taller",
   businessType: "mechanical_workshop",
   isActive: true,
 };
 
-/**
- * system_admin is platform-level: creates workshops and their first admin, never
- * belongs to one itself (see AppUser.workshopId below). It has no demo account or
- * UI yet — it's reflected here so the shape matches src/lib/db/schema.ts ahead of
- * the real backend, not because it's reachable in the current demo.
- */
+/** system_admin is platform-level: creates workshops and their first admin, never belongs to one itself. */
 export type Role = "system_admin" | "admin" | "worker";
 
 export type AppUser = {
   id: string;
   /** Absent only for role = "system_admin" — every admin/worker belongs to exactly one workshop. */
   workshopId?: string;
+  /** Present alongside workshopId — the workshop's display name, for UI chrome like the sidebar header. */
+  workshopName?: string;
   name: string;
   title: string;
   role: Role;
   /** Workers can't edit data by default; this is the one permission the client asked for. */
   canChangeOrderStatus: boolean;
 };
-
-export const demoUsers: AppUser[] = [
-  {
-    id: "u1",
-    workshopId: "w1",
-    name: "Andrea Ruiz",
-    title: "Administradora",
-    role: "admin",
-    canChangeOrderStatus: true,
-  },
-  {
-    id: "u2",
-    workshopId: "w1",
-    name: "Jorge Herrera",
-    title: "Mecánico jefe",
-    role: "worker",
-    canChangeOrderStatus: true,
-  },
-];
 
 export type Customer = {
   id: string;
@@ -70,28 +48,28 @@ export type Customer = {
 export const customers: Customer[] = [
   {
     id: "c1",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Lucía Ríos",
     phone: "+34 612 440 218",
     email: "lucia.rios@correo.es",
   },
   {
     id: "c2",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Miguel Torres",
     phone: "+34 655 902 347",
     email: "m.torres@correo.es",
   },
   {
     id: "c3",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Carla Delgado",
     phone: "+34 600 318 552",
     email: "carla.d@correo.es",
   },
   {
     id: "c4",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Andrés Fuentes",
     phone: "+34 699 741 063",
     email: "a.fuentes@correo.es",
@@ -99,14 +77,14 @@ export const customers: Customer[] = [
   },
   {
     id: "c5",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Sofía Medina",
     phone: "+34 622 508 194",
     email: "sofia.medina@correo.es",
   },
   {
     id: "c6",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     name: "Raúl Campos",
     phone: "+34 677 215 830",
     email: "raul.campos@correo.es",
@@ -129,7 +107,7 @@ export type Vehicle = {
 export const vehicles: Vehicle[] = [
   {
     id: "v1",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c1",
     plate: "LKM-482",
     vin: "3N1CN7AP8ML123456",
@@ -140,7 +118,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v2",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c2",
     plate: "JPR-109",
     make: "Chevrolet",
@@ -150,7 +128,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v3",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c2",
     plate: "GTH-884",
     make: "Toyota",
@@ -160,7 +138,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v4",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c3",
     plate: "NVD-736",
     vin: "JF2SJAWC5NH123456",
@@ -171,7 +149,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v5",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c4",
     plate: "KZS-513",
     make: "Kia",
@@ -181,7 +159,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v6",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c4",
     plate: "RDF-220",
     make: "Nissan",
@@ -191,7 +169,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v7",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c5",
     plate: "MZT-204",
     make: "Mazda",
@@ -201,7 +179,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v8",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c6",
     plate: "HGT-771",
     make: "Honda",
@@ -277,7 +255,7 @@ export type WorkOrder = {
 export const initialOrders: WorkOrder[] = [
   {
     id: "FT-2049",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c1",
     vehicleId: "v1",
     createdAt: "2026-09-28",
@@ -308,7 +286,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2050",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c2",
     vehicleId: "v2",
     createdAt: "2026-09-29",
@@ -348,7 +326,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2051",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c5",
     vehicleId: "v7",
     createdAt: "2026-09-28",
@@ -363,7 +341,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2052",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c3",
     vehicleId: "v4",
     createdAt: "2026-09-30",
@@ -378,7 +356,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2053",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c6",
     vehicleId: "v8",
     createdAt: "2026-09-12",
@@ -403,7 +381,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2054",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c4",
     vehicleId: "v5",
     createdAt: "2026-09-18",
@@ -434,7 +412,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2055",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c6",
     vehicleId: "v8",
     createdAt: "2026-10-02",
@@ -449,7 +427,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2056",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c4",
     vehicleId: "v5",
     createdAt: "2026-10-01",
@@ -465,7 +443,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2057",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c6",
     vehicleId: "v8",
     createdAt: "2026-09-28",
@@ -490,7 +468,7 @@ export const initialOrders: WorkOrder[] = [
   },
   {
     id: "FT-2058",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     customerId: "c4",
     vehicleId: "v6",
     createdAt: "2026-09-29",
@@ -534,7 +512,7 @@ export type PartCatalogItem = {
 export const partsCatalog: PartCatalogItem[] = [
   {
     id: "pc1",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "FR-1102",
     name: "Pastillas de freno delanteras",
     workshopCost: 48,
@@ -543,7 +521,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc2",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "AC-2205",
     name: "Aceite sintético 5W-30 (4L)",
     workshopCost: 39,
@@ -552,7 +530,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc3",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "BT-3301",
     name: "Batería 12V 60Ah",
     workshopCost: 70,
@@ -561,7 +539,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc4",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "EM-4410",
     name: "Kit de embrague completo",
     workshopCost: 285,
@@ -570,7 +548,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc5",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "FL-5508",
     name: "Filtro de aire",
     workshopCost: 16,
@@ -579,7 +557,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc6",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "AM-6612",
     name: "Amortiguador trasero",
     workshopCost: 96,
@@ -588,7 +566,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc7",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "TR-7001",
     name: "Transmisión automática reacondicionada",
     workshopCost: 1200,
@@ -597,7 +575,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc8",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "TR-7002",
     name: "Kit de líquido de transmisión",
     workshopCost: 35,
@@ -606,7 +584,7 @@ export const partsCatalog: PartCatalogItem[] = [
   },
   {
     id: "pc9",
-    workshopId: "w1",
+    workshopId: "00000000-0000-0000-0000-000000000001",
     sku: "CJ-8801",
     name: "Kit de sellos y filtro de caja",
     workshopCost: 140,
