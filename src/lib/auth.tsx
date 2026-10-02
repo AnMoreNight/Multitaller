@@ -3,7 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext, type ReactNode } from "react";
 import { useEffect } from "react";
 
-import { getSession, login as loginFn, logout as logoutFn } from "@/lib/server/auth.functions";
+import {
+  changeOwnPassword,
+  getSession,
+  login as loginFn,
+  logout as logoutFn,
+} from "@/lib/server/auth.functions";
 import {
   createUser,
   listUsers,
@@ -44,6 +49,8 @@ type AuthContextValue = {
   updateUser: (userId: string, changes: UserChanges) => Promise<void>;
   addUser: (user: NewUserInput) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
+  /** Re-verifies currentPassword server-side; signs the user out of every session on success. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -67,7 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: (input: { email: string; password: string }) => loginFn({ data: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["session"] }),
+    // Set the result directly instead of invalidating — invalidate only
+    // schedules a refetch, so the caller's immediate navigate({to: "/"})
+    // would land on a route whose useRequireAuth() still sees the stale
+    // pre-login `user: null` and bounces back to /login until that refetch
+    // resolves. The login response already has the authenticated user, so
+    // there's nothing to refetch.
+    onSuccess: (result) => queryClient.setQueryData(["session"], result),
   });
 
   const logoutMutation = useMutation({
@@ -95,6 +108,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKey }),
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      changeOwnPassword({ data: input }),
+    // The server already revoked every session (including this one) and
+    // cleared the cookie — drop the cached session everywhere so useAuth()
+    // reflects "signed out" immediately instead of waiting for a stale
+    // getSession() to be refetched.
+    onSuccess: () => queryClient.clear(),
+  });
+
   async function login(email: string, password: string) {
     await loginMutation.mutateAsync({ email, password });
   }
@@ -110,10 +133,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function removeUser(userId: string) {
     await removeUserMutation.mutateAsync(userId);
   }
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+  }
 
   return (
     <AuthContext.Provider
-      value={{ user, users, ready, login, logout, updateUser, addUser, removeUser }}
+      value={{ user, users, ready, login, logout, updateUser, addUser, removeUser, changePassword }}
     >
       {children}
     </AuthContext.Provider>

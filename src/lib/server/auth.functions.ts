@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { toAppUser } from "@/lib/db/mappers";
+import { signedInMiddleware } from "@/lib/server/auth-middleware";
 import {
   clearSessionCookie,
   createSession,
@@ -61,6 +62,29 @@ export const login = createServerFn({ method: "POST" })
     setSessionCookie(token);
 
     return { user: toAppUser(userRow) };
+  });
+
+export const changeOwnPassword = createServerFn({ method: "POST" })
+  .middleware([signedInMiddleware])
+  .validator(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }))
+  .handler(async ({ context, data }) => {
+    const db = getDb();
+    const row = await db.query.users.findFirst({ where: eq(users.id, context.user.id) });
+    if (!row) throw new Error("Usuario no encontrado");
+
+    const currentOk = await compare(data.currentPassword, row.passwordHash);
+    if (!currentOk) throw new Error("La contraseña actual no es correcta");
+
+    const passwordHash = await hash(data.newPassword, 12);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, row.id));
+
+    // Same rationale as a role change: a password change invalidates every
+    // session trusting the old one, including this one — the client signs
+    // the user out and sends them back to /login with the new password.
+    await revokeAllSessionsForUser(row.id);
+    clearSessionCookie();
+
+    return { ok: true };
   });
 
 // No auth middleware on purpose: logout must work for every role, including

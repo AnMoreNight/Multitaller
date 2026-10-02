@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { getDb } from "@/lib/db/client";
 import { toWorkshop } from "@/lib/db/mappers";
-import { users, workshops } from "@/lib/db/schema";
+import { customers, partsCatalog, users, vehicles, workOrders, workshops } from "@/lib/db/schema";
 import { systemAdminMiddleware } from "@/lib/server/auth-middleware";
 
 export const listWorkshops = createServerFn({ method: "GET" })
@@ -53,14 +53,54 @@ export const createWorkshop = createServerFn({ method: "POST" })
 
 export const updateWorkshop = createServerFn({ method: "POST" })
   .middleware([systemAdminMiddleware])
-  .validator(z.object({ workshopId: z.string().uuid(), isActive: z.boolean() }))
+  .validator(
+    z.object({
+      workshopId: z.string().uuid(),
+      changes: z.object({
+        name: z.string().min(1).optional(),
+        isActive: z.boolean().optional(),
+      }),
+    }),
+  )
   .handler(async ({ data }) => {
     const db = getDb();
     const [row] = await db
       .update(workshops)
-      .set({ isActive: data.isActive })
+      .set(data.changes)
       .where(eq(workshops.id, data.workshopId))
       .returning();
     if (!row) throw new Error("Taller no encontrado");
     return toWorkshop(row);
+  });
+
+export const deleteWorkshop = createServerFn({ method: "POST" })
+  .middleware([systemAdminMiddleware])
+  .validator(z.object({ workshopId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const { workshopId } = data;
+
+    // Not wrapped in a transaction (neon-http doesn't support one — see the
+    // note in createWorkshop above). Deletes go in dependency order, children
+    // before parents, so a failure partway through just leaves some child
+    // rows already gone and the rest of this same sequence safely re-runnable
+    // from scratch — never a half-deleted parent with orphaned children.
+    //
+    // work_orders.warranty_of self-references another row in the same
+    // workshop; nulling it out first avoids tripping that FK when the batch
+    // of work orders is deleted together instead of one at a time in some
+    // warranty-chain-respecting order.
+    await db
+      .update(workOrders)
+      .set({ warrantyOf: null })
+      .where(eq(workOrders.workshopId, workshopId));
+    await db.delete(workOrders).where(eq(workOrders.workshopId, workshopId));
+    await db.delete(vehicles).where(eq(vehicles.workshopId, workshopId));
+    await db.delete(customers).where(eq(customers.workshopId, workshopId));
+    await db.delete(partsCatalog).where(eq(partsCatalog.workshopId, workshopId));
+    await db.delete(users).where(eq(users.workshopId, workshopId));
+    const [row] = await db.delete(workshops).where(eq(workshops.id, workshopId)).returning();
+    if (!row) throw new Error("Taller no encontrado");
+
+    return { ok: true };
   });

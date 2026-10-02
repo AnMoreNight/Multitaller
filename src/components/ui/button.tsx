@@ -11,8 +11,10 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary-hover",
-        outline: "border border-border bg-transparent text-muted-foreground hover:border-border-strong hover:text-foreground",
+        outline:
+          "border border-border bg-transparent text-muted-foreground hover:border-border-strong hover:text-foreground",
         ghost: "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
       },
       size: {
         default: "h-9 px-3",
@@ -32,7 +34,13 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Component = asChild ? Slot : "button";
-    return <Component ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+    return (
+      <Component
+        ref={ref}
+        className={cn(buttonVariants({ variant, size }), className)}
+        {...props}
+      />
+    );
   },
 );
 Button.displayName = "Button";
