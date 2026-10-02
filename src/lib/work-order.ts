@@ -1,6 +1,11 @@
-import type { Customer, Vehicle, WorkOrder } from "@/lib/taller-data";
+import type { Customer, OrderStatus, Vehicle, WorkOrder } from "@/lib/taller-data";
 
 const MATERIALS_FEE_RATE = 0.035;
+
+/** An order only counts toward revenue once it's finished — there's no separate
+ * "completed at" timestamp, so this is checked against createdAt like the rest
+ * of the reporting in this app. */
+export const billedStatuses = new Set<OrderStatus>(["Completado", "Entregado"]);
 
 export function laborTotal(order: WorkOrder): number {
   return order.labor.reduce((sum, item) => sum + item.price, 0);
@@ -102,6 +107,25 @@ export function dateToISO(date: Date): string {
 
 export function todayISO(): string {
   return dateToISO(new Date());
+}
+
+/** Sum of billed orders created in the same calendar month as `reference` (defaults to today). */
+export function monthToDateRevenue(orders: WorkOrder[], reference: Date = new Date()): number {
+  const year = reference.getFullYear();
+  const month = reference.getMonth();
+  return orders
+    .filter((order) => {
+      if (!billedStatuses.has(order.status)) return false;
+      const [orderYear, orderMonth] = order.createdAt.split("-").map(Number);
+      return orderYear === year && orderMonth === month + 1;
+    })
+    .reduce((sum, order) => sum + orderTotal(order), 0);
+}
+
+/** Days left in the calendar month containing `reference` (defaults to today), including today. */
+export function daysRemainingInMonth(reference: Date = new Date()): number {
+  const lastDay = new Date(reference.getFullYear(), reference.getMonth() + 1, 0).getDate();
+  return lastDay - reference.getDate() + 1;
 }
 
 /** Mon..Sun ISO dates for the week containing `reference` (defaults to today). */

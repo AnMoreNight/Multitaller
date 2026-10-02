@@ -8,6 +8,7 @@ import { useData } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/taller-data";
 import {
+  billedStatuses,
   currentWeekDates,
   laborTotal,
   orderPartsMargin,
@@ -42,7 +43,6 @@ function ReportsPage() {
 
   const stats = useMemo(() => {
     const weekDates = currentWeekDates();
-    const billedStatuses = new Set(["Completado", "Entregado"]);
     const billedOrders = orders.filter((order) => billedStatuses.has(order.status));
 
     const weekTotal = orders

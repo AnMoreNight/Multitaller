@@ -22,16 +22,21 @@ import {
 // to the signed-in user's own workshop rather than trusting a workshopId a caller
 // might pass in, so a second workshop's data can never leak into this one (or vice
 // versa) even though callers no longer need to think about tenancy at all.
+const DEFAULT_MONTHLY_GOAL = 10000;
+
 type DataContextValue = {
   customers: Customer[];
   vehicles: Vehicle[];
   orders: WorkOrder[];
   partsCatalog: PartCatalogItem[];
+  /** Admin-set revenue target for the current workshop, shown on the sidebar's goal widget. */
+  monthlyGoal: number;
   addCustomer: (customer: Omit<Customer, "workshopId">) => void;
   addVehicle: (vehicle: Omit<Vehicle, "workshopId">) => void;
   addOrder: (order: Omit<WorkOrder, "workshopId">) => void;
   updateOrder: (orderId: string, updater: (order: WorkOrder) => WorkOrder) => void;
   addPart: (part: Omit<PartCatalogItem, "workshopId">) => void;
+  setMonthlyGoal: (amount: number) => void;
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -44,6 +49,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(seedVehicles);
   const [orders, setOrders] = useState<WorkOrder[]>(seedOrders);
   const [partsCatalog, setPartsCatalog] = useState<PartCatalogItem[]>(seedPartsCatalog);
+  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, number>>({
+    [demoWorkshop.id]: 90000,
+  });
 
   const value = useMemo<DataContextValue>(() => {
     const scoped = <T extends { workshopId: string }>(rows: T[]) =>
@@ -54,6 +62,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       vehicles: scoped(vehicles),
       orders: scoped(orders),
       partsCatalog: scoped(partsCatalog),
+      monthlyGoal: monthlyGoals[workshopId] ?? DEFAULT_MONTHLY_GOAL,
       addCustomer: (customer) =>
         setCustomers((current) => [{ ...customer, workshopId }, ...current]),
       addVehicle: (vehicle) => setVehicles((current) => [{ ...vehicle, workshopId }, ...current]),
@@ -63,8 +72,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           current.map((order) => (order.id === orderId ? updater(order) : order)),
         ),
       addPart: (part) => setPartsCatalog((current) => [{ ...part, workshopId }, ...current]),
+      setMonthlyGoal: (amount) =>
+        setMonthlyGoals((current) => ({ ...current, [workshopId]: amount })),
     };
-  }, [customers, vehicles, orders, partsCatalog, workshopId]);
+  }, [customers, vehicles, orders, partsCatalog, monthlyGoals, workshopId]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

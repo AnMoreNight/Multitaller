@@ -2,11 +2,13 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   BarChart3,
   CarFront,
+  Check,
   CircleDollarSign,
   ClipboardList,
   LogOut,
   Menu,
   Package,
+  Pencil,
   UserCog,
   Users,
   X,
@@ -16,8 +18,10 @@ import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { ProfileDialog } from "@/components/taller/ProfileDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useData } from "@/lib/store";
+import { formatMoney, type Role } from "@/lib/taller-data";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/taller-data";
+import { daysRemainingInMonth, monthToDateRevenue } from "@/lib/work-order";
 
 type NavItem = {
   label: string;
@@ -43,6 +47,80 @@ const workerNavigation: NavItem[] = [
 
 function navigationFor(role: Role): NavItem[] {
   return role === "admin" ? adminNavigation : workerNavigation;
+}
+
+function MonthlyGoalWidget() {
+  const { orders, monthlyGoal, setMonthlyGoal } = useData();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(monthlyGoal));
+
+  const revenue = monthToDateRevenue(orders);
+  const pct = monthlyGoal > 0 ? Math.min(100, Math.round((revenue / monthlyGoal) * 100)) : 0;
+  const daysLeft = daysRemainingInMonth();
+
+  function startEditing() {
+    setDraft(String(monthlyGoal));
+    setEditing(true);
+  }
+
+  function save() {
+    const amount = Number(draft);
+    if (Number.isFinite(amount) && amount > 0) setMonthlyGoal(amount);
+    setEditing(false);
+  }
+
+  return (
+    <div className="m-3 rounded-lg border border-border bg-card p-3">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[9px] uppercase text-muted-foreground">Meta mensual</p>
+        {editing ? (
+          <button
+            type="button"
+            onClick={save}
+            aria-label="Guardar meta"
+            className="text-primary hover:text-primary/80"
+          >
+            <Check className="size-3.5" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-primary">{pct}%</span>
+            <button
+              type="button"
+              onClick={startEditing}
+              aria-label="Editar meta mensual"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="size-3" />
+            </button>
+          </div>
+        )}
+      </div>
+      {editing ? (
+        <input
+          type="number"
+          min="1"
+          step="1"
+          autoFocus
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && save()}
+          className="mt-1 h-8 w-full rounded-md border border-border bg-background px-2 font-mono text-sm outline-none focus:border-primary"
+        />
+      ) : (
+        <p className="mt-1 font-mono text-lg font-semibold">
+          {formatMoney(revenue)}{" "}
+          <span className="text-sm text-muted-foreground">/ {formatMoney(monthlyGoal)}</span>
+        </p>
+      )}
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+        {daysLeft} {daysLeft === 1 ? "día restante" : "días restantes"}
+      </p>
+    </div>
+  );
 }
 
 export function AppShell({
@@ -127,23 +205,7 @@ export function AppShell({
               </Button>
             ))}
           </nav>
-          {user.role === "admin" && (
-            <div className="m-3 rounded-lg border border-border bg-card p-3">
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-[9px] uppercase text-muted-foreground">Meta mensual</p>
-                <span className="font-mono text-xs text-primary">76%</span>
-              </div>
-              <p className="mt-1 font-mono text-lg font-semibold">
-                $68.400 <span className="text-sm text-muted-foreground">/ $90.000</span>
-              </p>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-[76%] rounded-full bg-primary" />
-              </div>
-              <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
-                12 días restantes
-              </p>
-            </div>
-          )}
+          {user.role === "admin" && <MonthlyGoalWidget />}
           <div className="flex items-center gap-3 border-t border-sidebar-border p-4">
             <button
               type="button"
