@@ -1,14 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Package, Plus, Search, ShieldCheck } from "lucide-react";
+import { Package, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { Dialog, Field, StatCard } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { formatMoney } from "@/lib/taller-data";
+import { formatMoney, type PartCatalogItem } from "@/lib/taller-data";
 import { errorMessage, optional } from "@/lib/utils";
 
 export const Route = createFileRoute("/repuestos")({
@@ -32,18 +43,17 @@ export const Route = createFileRoute("/repuestos")({
   component: PartsPage,
 });
 
+function emptyForm() {
+  return { sku: "", name: "", workshopCost: "", customerPrice: "", warranty: false };
+}
+
 function PartsPage() {
   const { user } = useRequireAuth();
-  const { partsCatalog, addPart } = useData();
+  const { partsCatalog, addPart, editPart, removePart } = useData();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
-    sku: "",
-    name: "",
-    workshopCost: "",
-    customerPrice: "",
-    warranty: false,
-  });
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm());
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("es");
@@ -68,30 +78,70 @@ function PartsPage() {
     : 0;
   const withWarranty = partsCatalog.filter((part) => part.warranty).length;
 
-  function resetForm() {
+  function closeDialog() {
+    setDialogOpen(false);
+    setEditingPartId(null);
+    setForm(emptyForm());
+  }
+
+  function openCreate() {
+    setEditingPartId(null);
+    setForm(emptyForm());
+    setDialogOpen(true);
+  }
+
+  function openEdit(part: PartCatalogItem) {
+    setEditingPartId(part.id);
     setForm({
-      sku: "",
-      name: "",
-      workshopCost: "",
-      customerPrice: "",
-      warranty: false,
+      sku: part.sku ?? "",
+      name: part.name,
+      workshopCost: String(part.workshopCost),
+      customerPrice: String(part.customerPrice),
+      warranty: part.warranty,
     });
+    setDialogOpen(true);
   }
 
   async function submitPart() {
     try {
-      await addPart({
-        ...optional("sku", form.sku),
-        name: form.name,
-        workshopCost: Number(form.workshopCost) || 0,
-        customerPrice: Number(form.customerPrice) || 0,
-        warranty: form.warranty,
-      });
-      setDialogOpen(false);
-      resetForm();
-      toast.success("Repuesto agregado.");
+      if (editingPartId) {
+        await editPart(editingPartId, {
+          ...optional("sku", form.sku),
+          name: form.name,
+          workshopCost: Number(form.workshopCost) || 0,
+          customerPrice: Number(form.customerPrice) || 0,
+          warranty: form.warranty,
+        });
+        toast.success("Repuesto actualizado.");
+      } else {
+        await addPart({
+          ...optional("sku", form.sku),
+          name: form.name,
+          workshopCost: Number(form.workshopCost) || 0,
+          customerPrice: Number(form.customerPrice) || 0,
+          warranty: form.warranty,
+        });
+        toast.success("Repuesto agregado.");
+      }
+      closeDialog();
     } catch (err) {
-      toast.error(errorMessage(err, "No se pudo agregar el repuesto. Intenta de nuevo."));
+      toast.error(
+        errorMessage(
+          err,
+          editingPartId
+            ? "No se pudo actualizar el repuesto. Intenta de nuevo."
+            : "No se pudo agregar el repuesto. Intenta de nuevo.",
+        ),
+      );
+    }
+  }
+
+  async function handleDeletePart(part: PartCatalogItem) {
+    try {
+      await removePart(part.id);
+      toast.success("Repuesto eliminado.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo eliminar el repuesto. Intenta de nuevo."));
     }
   }
 
@@ -100,7 +150,7 @@ function PartsPage() {
       title="Repuestos"
       subtitle="Catálogo de precios para las órdenes de trabajo"
       actions={
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus className="size-4" />
           <span className="hidden sm:inline">Nuevo repuesto</span>
         </Button>
@@ -148,7 +198,20 @@ function PartsPage() {
                     <Package className="size-4 shrink-0 text-muted-foreground" />
                     <p className="font-semibold">{part.name}</p>
                   </div>
-                  {part.warranty ? <ShieldCheck className="size-4 shrink-0 text-primary" /> : null}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {part.warranty ? <ShieldCheck className="size-4 text-primary" /> : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => openEdit(part)}
+                      aria-label={`Editar ${part.name}`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <PartDeleteDialog part={part} onConfirm={() => handleDeletePart(part)} />
+                  </div>
                 </div>
                 <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                   {part.sku ?? "Sin SKU"}
@@ -188,6 +251,7 @@ function PartsPage() {
                   <th className="px-4 py-3 text-right font-medium">Precio cliente</th>
                   <th className="px-4 py-3 text-right font-medium">Margen</th>
                   <th className="px-4 py-3 text-center font-medium">Garantía</th>
+                  <th className="px-4 py-3 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -216,6 +280,21 @@ function PartsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => openEdit(part)}
+                          aria-label={`Editar ${part.name}`}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <PartDeleteDialog part={part} onConfirm={() => handleDeletePart(part)} />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -225,12 +304,9 @@ function PartsPage() {
       )}
 
       <Dialog
-        title="Nuevo repuesto"
+        title={editingPartId ? "Editar repuesto" : "Nuevo repuesto"}
         open={dialogOpen}
-        onClose={() => {
-          setDialogOpen(false);
-          resetForm();
-        }}
+        onClose={closeDialog}
       >
         <div className="grid gap-4 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -282,23 +358,47 @@ function PartsPage() {
             Incluye garantía
           </label>
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setDialogOpen(false);
-                resetForm();
-              }}
-            >
+            <Button type="button" variant="ghost" onClick={closeDialog}>
               Cancelar
             </Button>
             <Button type="button" onClick={submitPart} disabled={!form.name}>
               <Plus className="size-4" />
-              Guardar repuesto
+              {editingPartId ? "Guardar cambios" : "Guardar repuesto"}
             </Button>
           </div>
         </div>
       </Dialog>
     </AppShell>
+  );
+}
+
+function PartDeleteDialog({ part, onConfirm }: { part: PartCatalogItem; onConfirm: () => void }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 text-destructive hover:text-destructive"
+          aria-label={`Eliminar ${part.name}`}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar {part.name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Las órdenes que ya usaron este repuesto conservan su
+            propio registro y no se verán afectadas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Eliminar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

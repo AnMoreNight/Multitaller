@@ -10,7 +10,7 @@ import {
   listOrders,
   updateOrder as updateOrderFn,
 } from "@/lib/server/orders.functions";
-import { createPart, listPartsCatalog } from "@/lib/server/parts.functions";
+import { createPart, deletePart, listPartsCatalog, updatePart } from "@/lib/server/parts.functions";
 import { createVehicle, deleteVehicle, listVehicles } from "@/lib/server/vehicles.functions";
 import type { Customer, PartCatalogItem, Vehicle, WorkOrder } from "@/lib/taller-data";
 import { errorMessage } from "@/lib/utils";
@@ -42,11 +42,18 @@ type DataContextValue = {
    * into one request instead of firing on every keystroke. */
   updateOrder: (orderId: string, updater: (order: WorkOrder) => WorkOrder) => void;
   addPart: (part: Omit<PartCatalogItem, "workshopId" | "id">) => Promise<PartCatalogItem>;
+  editPart: (
+    partId: string,
+    changes: Omit<PartCatalogItem, "workshopId" | "id">,
+  ) => Promise<PartCatalogItem>;
   /** Also deletes the customer's vehicles and orders server-side (no "archive" yet). */
   removeCustomer: (customerId: string) => Promise<void>;
   /** Also deletes the vehicle's orders server-side (no "archive" yet). */
   removeVehicle: (vehicleId: string) => Promise<void>;
   removeOrder: (orderId: string) => Promise<void>;
+  /** Existing order history keeps its own copy of the part's name/cost/price,
+   * so this never touches past orders. */
+  removePart: (partId: string) => Promise<void>;
   setMonthlyGoal: (amount: number) => void;
 };
 
@@ -128,6 +135,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const createPartMutation = useMutation({
     mutationFn: (input: Omit<PartCatalogItem, "workshopId" | "id">) => createPart({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "parts"] }),
+  });
+  const updatePartMutation = useMutation({
+    mutationFn: ({
+      partId,
+      changes,
+    }: {
+      partId: string;
+      changes: Omit<PartCatalogItem, "workshopId" | "id">;
+    }) =>
+      updatePart({
+        data: {
+          partId,
+          sku: changes.sku ?? "",
+          name: changes.name,
+          workshopCost: changes.workshopCost,
+          customerPrice: changes.customerPrice,
+          warranty: changes.warranty,
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "parts"] }),
+  });
+  const deletePartMutation = useMutation({
+    mutationFn: (partId: string) => deletePart({ data: { partId } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "parts"] }),
   });
   const deleteCustomerMutation = useMutation({
@@ -225,9 +256,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addOrder: (order) => createOrderMutation.mutateAsync(order),
     updateOrder,
     addPart: (part) => createPartMutation.mutateAsync(part),
+    editPart: (partId, changes) => updatePartMutation.mutateAsync({ partId, changes }),
     removeCustomer: (customerId) => deleteCustomerMutation.mutateAsync(customerId),
     removeVehicle: (vehicleId) => deleteVehicleMutation.mutateAsync(vehicleId),
     removeOrder: (orderId) => deleteOrderMutation.mutateAsync(orderId),
+    removePart: (partId) => deletePartMutation.mutateAsync(partId),
     setMonthlyGoal: (amount) => {
       if (!workshopId) return;
       setMonthlyGoals((current) => ({ ...current, [workshopId]: amount }));
