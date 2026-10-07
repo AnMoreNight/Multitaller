@@ -1,11 +1,25 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CarFront, Mail, Phone } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, CarFront, Mail, Phone, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { StatCard, StatusBadge } from "@/components/taller/ui";
+import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
+import { errorMessage } from "@/lib/utils";
 import {
   formatDate,
   getCustomer,
@@ -21,7 +35,8 @@ export const Route = createFileRoute("/clientes_/$customerId")({
 function CustomerDetailPage() {
   const { user } = useRequireAuth();
   const { customerId } = Route.useParams();
-  const { customers, vehicles, orders, isLoading } = useData();
+  const { customers, vehicles, orders, isLoading, removeCustomer } = useData();
+  const navigate = useNavigate();
 
   if (!user) return null;
   if (user.role !== "admin") {
@@ -57,8 +72,46 @@ function CustomerDetailPage() {
   const history = ordersForCustomer(orders, customer.id);
   const totalSpent = history.reduce((sum, order) => sum + orderTotal(order), 0);
 
+  async function handleDelete() {
+    try {
+      await removeCustomer(customer!.id);
+      toast.success("Cliente eliminado.");
+      navigate({ to: "/clientes" });
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo eliminar el cliente. Intenta de nuevo."));
+    }
+  }
+
   return (
-    <AppShell title={customer.name} subtitle={customer.phone}>
+    <AppShell
+      title={customer.name}
+      subtitle={customer.phone}
+      actions={
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">
+              <Trash2 className="size-4" />
+              <span className="hidden sm:inline">Eliminar cliente</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar a {customer.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esto también eliminará {customerVehicles.length}{" "}
+                {customerVehicles.length === 1 ? "vehículo" : "vehículos"} y {history.length}{" "}
+                {history.length === 1 ? "orden" : "órdenes"} asociadas. Esta acción no se puede
+                deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      }
+    >
       <Link
         to="/clientes"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

@@ -4,6 +4,17 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/taller/AppShell";
 import { CheckboxRow, Field, StatusBadge, StatusSelect } from "@/components/taller/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -39,7 +50,16 @@ function OrderDetailPage() {
   const { user } = useRequireAuth();
   const { orderId } = Route.useParams();
   const navigate = useNavigate();
-  const { customers, vehicles, orders, updateOrder, addOrder, partsCatalog, isLoading } = useData();
+  const {
+    customers,
+    vehicles,
+    orders,
+    updateOrder,
+    addOrder,
+    partsCatalog,
+    isLoading,
+    removeOrder,
+  } = useData();
 
   if (!user) return null;
 
@@ -197,6 +217,16 @@ function OrderDetailPage() {
 
   const canOfferWarranty = order.status === "Completado" || order.status === "Entregado";
 
+  async function handleDeleteOrder() {
+    try {
+      await removeOrder(order!.id);
+      toast.success("Orden eliminada.");
+      navigate({ to: "/ordenes" });
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo eliminar la orden. Intenta de nuevo."));
+    }
+  }
+
   return (
     <AppShell title={order.id} subtitle={formatDate(order.createdAt)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -207,12 +237,37 @@ function OrderDetailPage() {
           <ArrowLeft className="size-4" />
           Volver a órdenes
         </Link>
-        {canEdit && canOfferWarranty && (
-          <Button variant="secondary" onClick={createWarrantyVisit}>
-            <ShieldCheck className="size-4" />
-            Crear visita de garantía
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && canOfferWarranty && (
+            <Button variant="secondary" onClick={createWarrantyVisit}>
+              <ShieldCheck className="size-4" />
+              Crear visita de garantía
+            </Button>
+          )}
+          {canEdit && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="size-4" />
+                  <span className="hidden sm:inline">Eliminar orden</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar la orden {order.id}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esto eliminará la orden junto con su mano de obra y repuestos registrados. Esta
+                    acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteOrder}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       {originalOrder && (

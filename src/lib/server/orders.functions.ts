@@ -213,3 +213,25 @@ export const updateOrder = createServerFn({ method: "POST" })
     if (!updated) throw new Error("No se pudo actualizar la orden");
     return toWorkOrder(updated);
   });
+
+export const deleteOrder = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .validator(z.object({ orderId: z.string() }))
+  .handler(async ({ context, data }) => {
+    const db = getDb();
+    const target = await db.query.workOrders.findFirst({
+      where: eq(workOrders.id, data.orderId),
+    });
+    if (!target || target.workshopId !== context.workshopId) {
+      throw new Error("Orden no encontrada en este taller");
+    }
+
+    // A warranty-visit order's warrantyOf FK (no ON DELETE) would otherwise
+    // block deleting the original order it points back to.
+    await db
+      .update(workOrders)
+      .set({ warrantyOf: null })
+      .where(eq(workOrders.warrantyOf, data.orderId));
+    // labor_items/part_lines cascade automatically (onDelete: "cascade").
+    await db.delete(workOrders).where(eq(workOrders.id, data.orderId));
+  });

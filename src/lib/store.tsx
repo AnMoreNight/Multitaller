@@ -3,9 +3,10 @@ import { createContext, useContext, useRef, useState, type ReactNode } from "rea
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
-import { createCustomer, listCustomers } from "@/lib/server/customers.functions";
+import { createCustomer, deleteCustomer, listCustomers } from "@/lib/server/customers.functions";
 import {
   createOrder,
+  deleteOrder as deleteOrderFn,
   listOrders,
   updateOrder as updateOrderFn,
 } from "@/lib/server/orders.functions";
@@ -41,6 +42,9 @@ type DataContextValue = {
    * into one request instead of firing on every keystroke. */
   updateOrder: (orderId: string, updater: (order: WorkOrder) => WorkOrder) => void;
   addPart: (part: Omit<PartCatalogItem, "workshopId" | "id">) => Promise<PartCatalogItem>;
+  /** Also deletes the customer's vehicles and orders server-side (no "archive" yet). */
+  removeCustomer: (customerId: string) => Promise<void>;
+  removeOrder: (orderId: string) => Promise<void>;
   setMonthlyGoal: (amount: number) => void;
 };
 
@@ -124,6 +128,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     mutationFn: (input: Omit<PartCatalogItem, "workshopId" | "id">) => createPart({ data: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "parts"] }),
   });
+  const deleteCustomerMutation = useMutation({
+    mutationFn: (customerId: string) => deleteCustomer({ data: { customerId } }),
+    onSuccess: () => {
+      // Cascades server-side to the customer's vehicles and orders too.
+      queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "customers"] });
+      queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ordersKey });
+    },
+  });
+  const deleteOrderMutation = useMutation({
+    mutationFn: (orderId: string) => deleteOrderFn({ data: { orderId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersKey }),
+  });
 
   // orderId -> latest not-yet-sent order state, and orderId -> pending debounce
   // timer. Both outlive individual renders (refs, not state) since neither
@@ -198,6 +215,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addOrder: (order) => createOrderMutation.mutateAsync(order),
     updateOrder,
     addPart: (part) => createPartMutation.mutateAsync(part),
+    removeCustomer: (customerId) => deleteCustomerMutation.mutateAsync(customerId),
+    removeOrder: (orderId) => deleteOrderMutation.mutateAsync(orderId),
     setMonthlyGoal: (amount) => {
       if (!workshopId) return;
       setMonthlyGoals((current) => ({ ...current, [workshopId]: amount }));
