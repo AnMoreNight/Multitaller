@@ -8,8 +8,8 @@ import { CheckboxRow, Dialog, Field, SelectField, TextareaField } from "@/compon
 import { Button } from "@/components/ui/button";
 import { useData } from "@/lib/store";
 import { warningLightOptions, type WarningLight } from "@/lib/taller-data";
-import { generateId, optional } from "@/lib/utils";
-import { nextOrderId, todayISO, vehiclesForCustomer } from "@/lib/work-order";
+import { optional } from "@/lib/utils";
+import { todayISO, vehiclesForCustomer } from "@/lib/work-order";
 
 type VehicleSelection =
   | { mode: "existing"; vehicleId: string }
@@ -37,7 +37,7 @@ function emptyNewVehicle(): VehicleSelection {
 
 export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const { customers, vehicles, orders, addCustomer, addVehicle, addOrder } = useData();
+  const { customers, vehicles, addCustomer, addVehicle, addOrder } = useData();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [customerSel, setCustomerSel] = useState<CustomerSelection>({
@@ -72,58 +72,54 @@ export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () =
     );
   }
 
-  function submitOrder() {
-    let customerId: string;
-    if (customerSel.mode === "existing") {
-      customerId = customerSel.customerId;
-    } else {
-      const created = {
-        id: generateId(),
-        name: customerSel.name,
-        phone: customerSel.phone,
-        ...optional("email", customerSel.email),
-      };
-      addCustomer(created);
-      customerId = created.id;
-    }
+  async function submitOrder() {
+    try {
+      let customerId: string;
+      if (customerSel.mode === "existing") {
+        customerId = customerSel.customerId;
+      } else {
+        const created = await addCustomer({
+          name: customerSel.name,
+          phone: customerSel.phone,
+          ...optional("email", customerSel.email),
+        });
+        customerId = created.id;
+      }
 
-    let vehicleId: string;
-    if (vehicleSel.mode === "existing") {
-      vehicleId = vehicleSel.vehicleId;
-    } else {
-      const created = {
-        id: generateId(),
+      let vehicleId: string;
+      if (vehicleSel.mode === "existing") {
+        vehicleId = vehicleSel.vehicleId;
+      } else {
+        const created = await addVehicle({
+          customerId,
+          make: vehicleSel.make,
+          model: vehicleSel.model,
+          year: Number(vehicleSel.year) || new Date().getFullYear(),
+          ...optional("plate", vehicleSel.plate),
+          ...optional("vin", vehicleSel.vin),
+          ...optional("color", vehicleSel.color),
+        });
+        vehicleId = created.id;
+      }
+
+      const order = await addOrder({
         customerId,
-        make: vehicleSel.make,
-        model: vehicleSel.model,
-        year: Number(vehicleSel.year) || new Date().getFullYear(),
-        ...optional("plate", vehicleSel.plate),
-        ...optional("vin", vehicleSel.vin),
-        ...optional("color", vehicleSel.color),
-      };
-      addVehicle(created);
-      vehicleId = created.id;
+        vehicleId,
+        createdAt: todayISO(),
+        reason,
+        warningLights: lights,
+        ...optional("complaint", complaint),
+        status: "Pendiente inspección",
+        diagnosis: { fee: 0, waived: false },
+        applyMaterialsFee: false,
+      });
+
+      close();
+      toast.success(`Orden ${order.id} creada.`);
+      navigate({ to: "/ordenes/$orderId", params: { orderId: order.id } });
+    } catch {
+      toast.error("No se pudo crear la orden. Intenta de nuevo.");
     }
-
-    const orderId = nextOrderId(orders);
-    addOrder({
-      id: orderId,
-      customerId,
-      vehicleId,
-      createdAt: todayISO(),
-      reason,
-      warningLights: lights,
-      ...optional("complaint", complaint),
-      status: "Pendiente inspección",
-      diagnosis: { fee: 0, waived: false },
-      labor: [],
-      parts: [],
-      applyMaterialsFee: false,
-    });
-
-    close();
-    toast.success(`Orden ${orderId} creada.`);
-    navigate({ to: "/ordenes/$orderId", params: { orderId } });
   }
 
   return (

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
-import { generateId, optional } from "@/lib/utils";
+import { optional } from "@/lib/utils";
 
 export const Route = createFileRoute("/repuestos")({
   head: () => ({
@@ -78,18 +78,21 @@ function PartsPage() {
     });
   }
 
-  function submitPart() {
-    addPart({
-      id: generateId(),
-      ...optional("sku", form.sku),
-      name: form.name,
-      workshopCost: Number(form.workshopCost) || 0,
-      customerPrice: Number(form.customerPrice) || 0,
-      warranty: form.warranty,
-    });
-    setDialogOpen(false);
-    resetForm();
-    toast.success("Repuesto agregado.");
+  async function submitPart() {
+    try {
+      await addPart({
+        ...optional("sku", form.sku),
+        name: form.name,
+        workshopCost: Number(form.workshopCost) || 0,
+        customerPrice: Number(form.customerPrice) || 0,
+        warranty: form.warranty,
+      });
+      setDialogOpen(false);
+      resetForm();
+      toast.success("Repuesto agregado.");
+    } catch {
+      toast.error("No se pudo agregar el repuesto. Intenta de nuevo.");
+    }
   }
 
   return (

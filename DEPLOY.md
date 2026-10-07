@@ -8,10 +8,12 @@ itself — Vercel for staging, a VPS for production.
 - ✅ Done: database schema (`src/lib/db/schema.ts`), migrations, and real
   auth — login/logout, sessions, workshops, and team management (`/equipo`,
   `/system/workshops`) all talk to Postgres. There is no demo login anymore.
-- ⏳ Pending: customers, vehicles, work orders, and the parts catalog still
-  live in `src/lib/taller-data.ts` as static demo data, not the database.
-  Everything below stands up real infrastructure; it doesn't by itself move
-  that remaining data over.
+- ✅ Done: customers, vehicles, work orders (with labor/parts lines), and the
+  parts catalog are read from and written to Postgres (`src/lib/server/*.functions.ts`,
+  wired into the client through `src/lib/store.tsx`). `src/lib/taller-data.ts`
+  now only holds types, UI constants, and the demo arrays `db:seed` inserts
+  into a fresh workshop #1 for local dev — the app itself no longer reads
+  from it.
 
 ## 1. Create a Neon Postgres database
 
@@ -356,6 +358,9 @@ Remove-Item check-db.tmp.mjs
 
 ## What's next
 
-Customers, vehicles, work orders, and the parts catalog are still static
-demo data in `src/lib/taller-data.ts`, not the database — moving those over
-is the remaining work. Ask to see the current plan for where things stand.
+All core workshop data (customers, vehicles, work orders, labor/parts lines,
+parts catalog) now persists in Postgres — nothing created through the app is
+lost on reload or between sessions. One small piece is still client-only: the
+sidebar's monthly revenue goal (`setMonthlyGoal` in `src/lib/store.tsx`) has
+no schema column yet, so it resets on reload. Low priority to move over since
+it's a single admin-set number, not customer data.

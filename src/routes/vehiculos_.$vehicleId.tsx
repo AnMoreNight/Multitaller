@@ -23,7 +23,7 @@ export const Route = createFileRoute("/vehiculos_/$vehicleId")({
 function VehicleDetailPage() {
   const { user } = useRequireAuth();
   const { vehicleId } = Route.useParams();
-  const { customers, vehicles, orders } = useData();
+  const { customers, vehicles, orders, isLoading } = useData();
   const vinLabelId = useId();
   const colorLabelId = useId();
   const yearLabelId = useId();
@@ -32,6 +32,13 @@ function VehicleDetailPage() {
 
   const vehicle = getVehicle(vehicles, vehicleId);
   if (!vehicle) {
+    if (isLoading) {
+      return (
+        <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">
+          Cargando…
+        </div>
+      );
+    }
     return (
       <AppShell title="Vehículo no encontrado" subtitle="">
         <div className="rounded-lg border border-border bg-card/90 p-10 text-center text-sm text-muted-foreground">

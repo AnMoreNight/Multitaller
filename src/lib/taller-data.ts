@@ -13,13 +13,6 @@ export type Workshop = {
   isActive: boolean;
 };
 
-export const demoWorkshop: Workshop = {
-  id: "00000000-0000-0000-0000-000000000001",
-  name: "Ferro Taller",
-  businessType: "mechanical_workshop",
-  isActive: true,
-};
-
 /** system_admin is platform-level: creates workshops and their first admin, never belongs to one itself. */
 export type Role = "system_admin" | "admin" | "worker";
 

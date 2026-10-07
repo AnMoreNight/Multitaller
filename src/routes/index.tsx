@@ -11,7 +11,7 @@ import { Dialog, Field, StatCard } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn, generateId, optional } from "@/lib/utils";
+import { cn, optional } from "@/lib/utils";
 import { formatMoney } from "@/lib/taller-data";
 import { orderTotal, todayISO } from "@/lib/work-order";
 
@@ -57,15 +57,18 @@ function WorkshopDashboard() {
     )
     .reduce((sum, order) => sum + orderTotal(order), 0);
 
-  function addCustomerQuick(name: string, phone: string, email: string) {
-    addCustomer({
-      id: generateId(),
-      name,
-      phone,
-      ...optional("email", email),
-    });
-    setDialog(null);
-    toast.success("Cliente agregado.");
+  async function addCustomerQuick(name: string, phone: string, email: string) {
+    try {
+      await addCustomer({
+        name,
+        phone,
+        ...optional("email", email),
+      });
+      setDialog(null);
+      toast.success("Cliente agregado.");
+    } catch {
+      toast.error("No se pudo agregar el cliente. Intenta de nuevo.");
+    }
   }
 
   return (

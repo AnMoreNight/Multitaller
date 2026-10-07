@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
-import { generateId, optional } from "@/lib/utils";
+import { optional } from "@/lib/utils";
 import { ordersForCustomer, orderTotal, vehiclesForCustomer } from "@/lib/work-order";
 
 export const Route = createFileRoute("/clientes")({
@@ -69,17 +69,20 @@ function CustomersPage() {
     setForm({ name: "", phone: "", email: "", notes: "" });
   }
 
-  function addCustomerSubmit() {
-    addCustomer({
-      id: generateId(),
-      name: form.name,
-      phone: form.phone,
-      ...optional("email", form.email),
-      ...optional("notes", form.notes),
-    });
-    setDialogOpen(false);
-    resetForm();
-    toast.success("Cliente agregado.");
+  async function addCustomerSubmit() {
+    try {
+      await addCustomer({
+        name: form.name,
+        phone: form.phone,
+        ...optional("email", form.email),
+        ...optional("notes", form.notes),
+      });
+      setDialogOpen(false);
+      resetForm();
+      toast.success("Cliente agregado.");
+    } catch {
+      toast.error("No se pudo agregar el cliente. Intenta de nuevo.");
+    }
   }
 
   return (

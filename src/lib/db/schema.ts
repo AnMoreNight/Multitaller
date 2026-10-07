@@ -31,8 +31,8 @@ export const workshops = pgTable("workshops", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   businessType: businessTypeEnum("business_type").notNull().default("mechanical_workshop"),
-  // Backs atomic FT-#### id generation in createOrder — see nextOrderId() in work-order.ts,
-  // which this replaces (client-side max-scan is racy against a shared DB).
+  // Backs atomic FT-#### id generation in createOrder (src/lib/server/orders.functions.ts) —
+  // a client-side max-scan would be racy against a shared DB.
   nextOrderSeq: integer("next_order_seq").notNull().default(0),
   // System admin can deactivate a workshop (e.g. non-payment, offboarding) without
   // deleting its data. login/getSession must refuse admin/worker sessions here.

@@ -1,41 +1,45 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
+import { createCustomer, listCustomers } from "@/lib/server/customers.functions";
 import {
-  customers as seedCustomers,
-  vehicles as seedVehicles,
-  initialOrders as seedOrders,
-  partsCatalog as seedPartsCatalog,
-  demoWorkshop,
-  type Customer,
-  type PartCatalogItem,
-  type Vehicle,
-  type WorkOrder,
-} from "@/lib/taller-data";
+  createOrder,
+  listOrders,
+  updateOrder as updateOrderFn,
+} from "@/lib/server/orders.functions";
+import { createPart, listPartsCatalog } from "@/lib/server/parts.functions";
+import { createVehicle, listVehicles } from "@/lib/server/vehicles.functions";
+import type { Customer, PartCatalogItem, Vehicle, WorkOrder } from "@/lib/taller-data";
 
-// A single in-memory store shared across routes for this session. Replaces the old
-// per-page `useState(initialOrders)` copies now that pages link to each other
-// (dashboard -> order detail, vehicle/customer history, etc.) and need to see the
-// same data. Still resets on reload — real persistence is in progress, see DEPLOY.md.
-//
-// Every row is tenant-scoped by workshopId. The provider reads and writes are scoped
-// to the signed-in user's own workshop rather than trusting a workshopId a caller
-// might pass in, so a second workshop's data can never leak into this one (or vice
-// versa) even though callers no longer need to think about tenancy at all.
+// Real Postgres data now (see src/lib/server/*.functions.ts), scoped by the
+// signed-in user's workshopId server-side — never a client-supplied one, so
+// a second workshop's data can never leak into this one. Every list query
+// defaults to [] while pending, which is what keeps useData()'s shape stable
+// (always real arrays, never undefined) for every page that calls it.
 const DEFAULT_MONTHLY_GOAL = 10000;
+const UPDATE_ORDER_DEBOUNCE_MS = 500;
 
 type DataContextValue = {
   customers: Customer[];
   vehicles: Vehicle[];
   orders: WorkOrder[];
   partsCatalog: PartCatalogItem[];
+  /** True only during each list's first fetch (not background refetches) —
+   * a detail page must check this before concluding a missing id means
+   * "doesn't exist" rather than "hasn't loaded yet". */
+  isLoading: boolean;
   /** Admin-set revenue target for the current workshop, shown on the sidebar's goal widget. */
   monthlyGoal: number;
-  addCustomer: (customer: Omit<Customer, "workshopId">) => void;
-  addVehicle: (vehicle: Omit<Vehicle, "workshopId">) => void;
-  addOrder: (order: Omit<WorkOrder, "workshopId">) => void;
+  addCustomer: (customer: Omit<Customer, "workshopId" | "id">) => Promise<Customer>;
+  addVehicle: (vehicle: Omit<Vehicle, "workshopId" | "id">) => Promise<Vehicle>;
+  addOrder: (order: Omit<WorkOrder, "workshopId" | "id" | "labor" | "parts">) => Promise<WorkOrder>;
+  /** Applies instantly to local state and the UI; the network write is
+   * debounced per orderId so rapid edits (typing, repeated clicks) coalesce
+   * into one request instead of firing on every keystroke. */
   updateOrder: (orderId: string, updater: (order: WorkOrder) => WorkOrder) => void;
-  addPart: (part: Omit<PartCatalogItem, "workshopId">) => void;
+  addPart: (part: Omit<PartCatalogItem, "workshopId" | "id">) => Promise<PartCatalogItem>;
   setMonthlyGoal: (amount: number) => void;
 };
 
@@ -43,39 +47,156 @@ const DataContext = createContext<DataContextValue | null>(null);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const workshopId = user?.workshopId ?? demoWorkshop.id;
+  const workshopId = user?.workshopId;
+  const queryClient = useQueryClient();
 
-  const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(seedVehicles);
-  const [orders, setOrders] = useState<WorkOrder[]>(seedOrders);
-  const [partsCatalog, setPartsCatalog] = useState<PartCatalogItem[]>(seedPartsCatalog);
-  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, number>>({
-    [demoWorkshop.id]: 90000,
+  const ordersKey = ["workshop", workshopId, "orders"];
+
+  const customersQuery = useQuery({
+    queryKey: ["workshop", workshopId, "customers"],
+    queryFn: () => listCustomers(),
+    enabled: Boolean(workshopId),
+  });
+  const vehiclesQuery = useQuery({
+    queryKey: ["workshop", workshopId, "vehicles"],
+    queryFn: () => listVehicles(),
+    enabled: Boolean(workshopId),
+  });
+  const ordersQuery = useQuery({
+    queryKey: ordersKey,
+    queryFn: () => listOrders(),
+    enabled: Boolean(workshopId),
+  });
+  const partsQuery = useQuery({
+    queryKey: ["workshop", workshopId, "parts"],
+    queryFn: () => listPartsCatalog(),
+    enabled: Boolean(workshopId),
   });
 
-  const value = useMemo<DataContextValue>(() => {
-    const scoped = <T extends { workshopId: string }>(rows: T[]) =>
-      rows.filter((row) => row.workshopId === workshopId);
+  const customers = customersQuery.data ?? [];
+  const vehicles = vehiclesQuery.data ?? [];
+  const orders = ordersQuery.data ?? [];
+  const partsCatalog = partsQuery.data ?? [];
+  const isLoading =
+    customersQuery.isLoading ||
+    vehiclesQuery.isLoading ||
+    ordersQuery.isLoading ||
+    partsQuery.isLoading;
 
-    return {
-      customers: scoped(customers),
-      vehicles: scoped(vehicles),
-      orders: scoped(orders),
-      partsCatalog: scoped(partsCatalog),
-      monthlyGoal: monthlyGoals[workshopId] ?? DEFAULT_MONTHLY_GOAL,
-      addCustomer: (customer) =>
-        setCustomers((current) => [{ ...customer, workshopId }, ...current]),
-      addVehicle: (vehicle) => setVehicles((current) => [{ ...vehicle, workshopId }, ...current]),
-      addOrder: (order) => setOrders((current) => [{ ...order, workshopId }, ...current]),
-      updateOrder: (orderId, updater) =>
-        setOrders((current) =>
-          current.map((order) => (order.id === orderId ? updater(order) : order)),
-        ),
-      addPart: (part) => setPartsCatalog((current) => [{ ...part, workshopId }, ...current]),
-      setMonthlyGoal: (amount) =>
-        setMonthlyGoals((current) => ({ ...current, [workshopId]: amount })),
-    };
-  }, [customers, vehicles, orders, partsCatalog, monthlyGoals, workshopId]);
+  // Per-workshop admin goal — still client-only (no schema field for it yet);
+  // unrelated to the persistence fix, left exactly as it was.
+  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, number>>({});
+  const monthlyGoal = workshopId
+    ? (monthlyGoals[workshopId] ?? DEFAULT_MONTHLY_GOAL)
+    : DEFAULT_MONTHLY_GOAL;
+
+  const createCustomerMutation = useMutation({
+    mutationFn: (input: Omit<Customer, "workshopId" | "id">) => createCustomer({ data: input }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "customers"] }),
+  });
+  const createVehicleMutation = useMutation({
+    mutationFn: (input: Omit<Vehicle, "workshopId" | "id">) => createVehicle({ data: input }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "vehicles"] }),
+  });
+  const createOrderMutation = useMutation({
+    mutationFn: (input: Omit<WorkOrder, "workshopId" | "id" | "labor" | "parts">) =>
+      createOrder({
+        data: {
+          customerId: input.customerId,
+          vehicleId: input.vehicleId,
+          createdAt: input.createdAt,
+          reason: input.reason,
+          warningLights: input.warningLights,
+          complaint: input.complaint,
+          status: input.status,
+          diagnosisFee: input.diagnosis.fee,
+          diagnosisWaived: input.diagnosis.waived,
+          applyMaterialsFee: input.applyMaterialsFee,
+          warrantyOf: input.warrantyOf,
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersKey }),
+  });
+  const createPartMutation = useMutation({
+    mutationFn: (input: Omit<PartCatalogItem, "workshopId" | "id">) => createPart({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "parts"] }),
+  });
+
+  // orderId -> latest not-yet-sent order state, and orderId -> pending debounce
+  // timer. Both outlive individual renders (refs, not state) since neither
+  // should itself trigger a re-render -- the optimistic setQueryData call
+  // below is what updates the UI.
+  const pendingOrdersRef = useRef<Map<string, WorkOrder>>(new Map());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  function updateOrder(orderId: string, updater: (order: WorkOrder) => WorkOrder) {
+    const base =
+      pendingOrdersRef.current.get(orderId) ?? orders.find((order) => order.id === orderId);
+    if (!base) return;
+    const next = updater(base);
+    pendingOrdersRef.current.set(orderId, next);
+
+    queryClient.setQueryData<WorkOrder[]>(ordersKey, (current) =>
+      (current ?? []).map((order) => (order.id === orderId ? next : order)),
+    );
+
+    const existingTimer = timersRef.current.get(orderId);
+    if (existingTimer) clearTimeout(existingTimer);
+    timersRef.current.set(
+      orderId,
+      setTimeout(() => {
+        timersRef.current.delete(orderId);
+        const pending = pendingOrdersRef.current.get(orderId);
+        pendingOrdersRef.current.delete(orderId);
+        if (!pending) return;
+        updateOrderFn({
+          data: {
+            orderId,
+            changes: {
+              reason: pending.reason,
+              warningLights: pending.warningLights,
+              complaint: pending.complaint,
+              status: pending.status,
+              diagnosisFee: pending.diagnosis.fee,
+              diagnosisWaived: pending.diagnosis.waived,
+              applyMaterialsFee: pending.applyMaterialsFee,
+              labor: pending.labor,
+              parts: pending.parts,
+            },
+          },
+        })
+          .then((saved) => {
+            queryClient.setQueryData<WorkOrder[]>(ordersKey, (current) =>
+              (current ?? []).map((order) => (order.id === orderId ? saved : order)),
+            );
+          })
+          .catch(() => {
+            toast.error("No se pudo guardar el último cambio en la orden. Intenta de nuevo.");
+            queryClient.invalidateQueries({ queryKey: ordersKey });
+          });
+      }, UPDATE_ORDER_DEBOUNCE_MS),
+    );
+  }
+
+  const value: DataContextValue = {
+    customers,
+    vehicles,
+    orders,
+    partsCatalog,
+    isLoading,
+    monthlyGoal,
+    addCustomer: (customer) => createCustomerMutation.mutateAsync(customer),
+    addVehicle: (vehicle) => createVehicleMutation.mutateAsync(vehicle),
+    addOrder: (order) => createOrderMutation.mutateAsync(order),
+    updateOrder,
+    addPart: (part) => createPartMutation.mutateAsync(part),
+    setMonthlyGoal: (amount) => {
+      if (!workshopId) return;
+      setMonthlyGoals((current) => ({ ...current, [workshopId]: amount }));
+    },
+  };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

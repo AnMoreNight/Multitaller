@@ -91,14 +91,6 @@ export function formatDate(isoDate: string): string {
   });
 }
 
-export function nextOrderId(orders: WorkOrder[]): string {
-  const max = orders.reduce((highest, order) => {
-    const numeric = Number(order.id.split("-")[1]);
-    return Number.isFinite(numeric) ? Math.max(highest, numeric) : highest;
-  }, 0);
-  return `FT-${max + 1}`;
-}
-
 export function dateToISO(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

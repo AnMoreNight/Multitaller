@@ -21,7 +21,7 @@ export const Route = createFileRoute("/clientes_/$customerId")({
 function CustomerDetailPage() {
   const { user } = useRequireAuth();
   const { customerId } = Route.useParams();
-  const { customers, vehicles, orders } = useData();
+  const { customers, vehicles, orders, isLoading } = useData();
 
   if (!user) return null;
   if (user.role !== "admin") {
@@ -34,6 +34,13 @@ function CustomerDetailPage() {
 
   const customer = getCustomer(customers, customerId);
   if (!customer) {
+    if (isLoading) {
+      return (
+        <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">
+          Cargando…
+        </div>
+      );
+    }
     return (
       <AppShell title="Cliente no encontrado" subtitle="">
         <div className="rounded-lg border border-border bg-card/90 p-10 text-center text-sm text-muted-foreground">

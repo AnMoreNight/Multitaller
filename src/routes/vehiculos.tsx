@@ -9,7 +9,7 @@ import { Dialog, Field } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { generateId, optional } from "@/lib/utils";
+import { optional } from "@/lib/utils";
 import { getCustomer, lastServiceLabel, vehicleLabel } from "@/lib/work-order";
 
 export const Route = createFileRoute("/vehiculos")({
@@ -77,35 +77,36 @@ function VehiclesPage() {
     setForm({ make: "", model: "", year: "", color: "", plate: "", vin: "" });
   }
 
-  function submitVehicle() {
-    let customerId: string;
-    if (customerSel.mode === "existing") {
-      customerId = customerSel.customerId;
-    } else {
-      const created = {
-        id: generateId(),
-        name: customerSel.name,
-        phone: customerSel.phone,
-        ...optional("email", customerSel.email),
-      };
-      addCustomer(created);
-      customerId = created.id;
+  async function submitVehicle() {
+    try {
+      let customerId: string;
+      if (customerSel.mode === "existing") {
+        customerId = customerSel.customerId;
+      } else {
+        const created = await addCustomer({
+          name: customerSel.name,
+          phone: customerSel.phone,
+          ...optional("email", customerSel.email),
+        });
+        customerId = created.id;
+      }
+
+      await addVehicle({
+        customerId,
+        make: form.make,
+        model: form.model,
+        year: Number(form.year) || new Date().getFullYear(),
+        ...optional("color", form.color),
+        ...optional("plate", form.plate),
+        ...optional("vin", form.vin),
+      });
+
+      setDialogOpen(false);
+      resetForm();
+      toast.success("Vehículo registrado.");
+    } catch {
+      toast.error("No se pudo registrar el vehículo. Intenta de nuevo.");
     }
-
-    addVehicle({
-      id: generateId(),
-      customerId,
-      make: form.make,
-      model: form.model,
-      year: Number(form.year) || new Date().getFullYear(),
-      ...optional("color", form.color),
-      ...optional("plate", form.plate),
-      ...optional("vin", form.vin),
-    });
-
-    setDialogOpen(false);
-    resetForm();
-    toast.success("Vehículo registrado.");
   }
 
   return (

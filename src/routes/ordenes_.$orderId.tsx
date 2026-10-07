@@ -22,7 +22,6 @@ import {
   getVehicle,
   laborTotal,
   materialsFee,
-  nextOrderId,
   ordersForVehicle,
   orderTotal,
   partsCostTotal,
@@ -40,12 +39,19 @@ function OrderDetailPage() {
   const { user } = useRequireAuth();
   const { orderId } = Route.useParams();
   const navigate = useNavigate();
-  const { customers, vehicles, orders, updateOrder, addOrder, partsCatalog } = useData();
+  const { customers, vehicles, orders, updateOrder, addOrder, partsCatalog, isLoading } = useData();
 
   if (!user) return null;
 
   const order = orders.find((candidate) => candidate.id === orderId);
   if (!order) {
+    if (isLoading) {
+      return (
+        <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">
+          Cargando…
+        </div>
+      );
+    }
     return (
       <AppShell title="Orden no encontrada" subtitle="">
         <div className="rounded-lg border border-border bg-card/90 p-10 text-center text-sm text-muted-foreground">
@@ -170,23 +176,23 @@ function OrderDetailPage() {
     });
   }
 
-  function createWarrantyVisit() {
-    const newId = nextOrderId(orders);
-    addOrder({
-      id: newId,
-      customerId: order!.customerId,
-      vehicleId: order!.vehicleId,
-      createdAt: todayISO(),
-      reason: `Retorno por garantía de ${order!.id}`,
-      warningLights: [],
-      status: "Garantía",
-      warrantyOf: order!.id,
-      diagnosis: { fee: 0, waived: true },
-      labor: [],
-      parts: [],
-      applyMaterialsFee: false,
-    });
-    navigate({ to: "/ordenes/$orderId", params: { orderId: newId } });
+  async function createWarrantyVisit() {
+    try {
+      const created = await addOrder({
+        customerId: order!.customerId,
+        vehicleId: order!.vehicleId,
+        createdAt: todayISO(),
+        reason: `Retorno por garantía de ${order!.id}`,
+        warningLights: [],
+        status: "Garantía",
+        warrantyOf: order!.id,
+        diagnosis: { fee: 0, waived: true },
+        applyMaterialsFee: false,
+      });
+      navigate({ to: "/ordenes/$orderId", params: { orderId: created.id } });
+    } catch {
+      toast.error("No se pudo crear la visita de garantía. Intenta de nuevo.");
+    }
   }
 
   const canOfferWarranty = order.status === "Completado" || order.status === "Entregado";
