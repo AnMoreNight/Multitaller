@@ -11,7 +11,7 @@ import { Dialog, Field } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn, optional } from "@/lib/utils";
+import { cn, generateId, optional } from "@/lib/utils";
 import { formatMoney } from "@/lib/taller-data";
 import { orderTotal, todayISO } from "@/lib/work-order";
 
@@ -59,7 +59,7 @@ function WorkshopDashboard() {
 
   function addCustomerQuick(name: string, phone: string, email: string) {
     addCustomer({
-      id: crypto.randomUUID(),
+      id: generateId(),
       name,
       phone,
       ...optional("email", email),

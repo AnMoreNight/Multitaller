@@ -9,7 +9,7 @@ import { Dialog, Field } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { optional } from "@/lib/utils";
+import { generateId, optional } from "@/lib/utils";
 import { getCustomer, lastServiceLabel, vehicleLabel } from "@/lib/work-order";
 
 export const Route = createFileRoute("/vehiculos")({
@@ -83,7 +83,7 @@ function VehiclesPage() {
       customerId = customerSel.customerId;
     } else {
       const created = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: customerSel.name,
         phone: customerSel.phone,
         ...optional("email", customerSel.email),
@@ -93,7 +93,7 @@ function VehiclesPage() {
     }
 
     addVehicle({
-      id: crypto.randomUUID(),
+      id: generateId(),
       customerId,
       make: form.make,
       model: form.model,

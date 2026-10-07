@@ -8,7 +8,7 @@ import { CheckboxRow, Dialog, Field, SelectField, TextareaField } from "@/compon
 import { Button } from "@/components/ui/button";
 import { useData } from "@/lib/store";
 import { warningLightOptions, type WarningLight } from "@/lib/taller-data";
-import { optional } from "@/lib/utils";
+import { generateId, optional } from "@/lib/utils";
 import { nextOrderId, todayISO, vehiclesForCustomer } from "@/lib/work-order";
 
 type VehicleSelection =
@@ -78,7 +78,7 @@ export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () =
       customerId = customerSel.customerId;
     } else {
       const created = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: customerSel.name,
         phone: customerSel.phone,
         ...optional("email", customerSel.email),
@@ -92,7 +92,7 @@ export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () =
       vehicleId = vehicleSel.vehicleId;
     } else {
       const created = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         customerId,
         make: vehicleSel.make,
         model: vehicleSel.model,

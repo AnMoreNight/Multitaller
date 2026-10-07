@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
-import { optional } from "@/lib/utils";
+import { generateId, optional } from "@/lib/utils";
 import { ordersForCustomer, orderTotal, vehiclesForCustomer } from "@/lib/work-order";
 
 export const Route = createFileRoute("/clientes")({
@@ -71,7 +71,7 @@ function CustomersPage() {
 
   function addCustomerSubmit() {
     addCustomer({
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: form.name,
       phone: form.phone,
       ...optional("email", form.email),

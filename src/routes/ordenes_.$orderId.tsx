@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, generateId } from "@/lib/utils";
 import { formatMoney, type LaborItem, type PartLine, type WorkOrder } from "@/lib/taller-data";
 import {
   formatDate,
@@ -77,7 +77,7 @@ function OrderDetailPage() {
   function addLabor() {
     patch((draft) => ({
       ...draft,
-      labor: [...draft.labor, { id: crypto.randomUUID(), description: "", price: 0 }],
+      labor: [...draft.labor, { id: generateId(), description: "", price: 0 }],
     }));
   }
   function updateLaborItem(id: string, changes: Partial<LaborItem>) {
@@ -99,7 +99,7 @@ function OrderDetailPage() {
       parts: [
         ...draft.parts,
         {
-          id: crypto.randomUUID(),
+          id: generateId(),
           name: "",
           workshopCost: 0,
           customerPrice: 0,
@@ -117,7 +117,7 @@ function OrderDetailPage() {
       parts: [
         ...draft.parts,
         {
-          id: crypto.randomUUID(),
+          id: generateId(),
           partId: catalogPart.id,
           name: catalogPart.name,
           workshopCost: catalogPart.workshopCost,

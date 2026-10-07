@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
-import { optional } from "@/lib/utils";
+import { generateId, optional } from "@/lib/utils";
 
 export const Route = createFileRoute("/repuestos")({
   head: () => ({
@@ -80,7 +80,7 @@ function PartsPage() {
 
   function submitPart() {
     addPart({
-      id: crypto.randomUUID(),
+      id: generateId(),
       ...optional("sku", form.sku),
       name: form.name,
       workshopCost: Number(form.workshopCost) || 0,
