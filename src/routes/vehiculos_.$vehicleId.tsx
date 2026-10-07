@@ -1,12 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CarFront } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, CarFront, Trash2 } from "lucide-react";
 import { useId } from "react";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AppShell } from "@/components/taller/AppShell";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/taller/ui";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
+import { errorMessage } from "@/lib/utils";
 import {
   formatDate,
   getCustomer,
@@ -23,7 +37,8 @@ export const Route = createFileRoute("/vehiculos_/$vehicleId")({
 function VehicleDetailPage() {
   const { user } = useRequireAuth();
   const { vehicleId } = Route.useParams();
-  const { customers, vehicles, orders, isLoading } = useData();
+  const { customers, vehicles, orders, isLoading, removeVehicle } = useData();
+  const navigate = useNavigate();
   const vinLabelId = useId();
   const colorLabelId = useId();
   const yearLabelId = useId();
@@ -54,10 +69,46 @@ function VehicleDetailPage() {
   const customer = getCustomer(customers, vehicle.customerId);
   const history = ordersForVehicle(orders, vehicle.id);
 
+  async function handleDelete() {
+    try {
+      await removeVehicle(vehicle!.id);
+      toast.success("Vehículo eliminado.");
+      navigate({ to: "/vehiculos" });
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo eliminar el vehículo. Intenta de nuevo."));
+    }
+  }
+
   return (
     <AppShell
       title={vehicleLabel(vehicle)}
       subtitle={vehicle.plate ?? vehicle.vin ?? "Sin matrícula"}
+      actions={
+        user.role === "admin" ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="size-4" />
+                <span className="hidden sm:inline">Eliminar vehículo</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar {vehicleLabel(vehicle)}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esto también eliminará {history.length}{" "}
+                  {history.length === 1 ? "orden asociada" : "órdenes asociadas"}. Esta acción no se
+                  puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : undefined
+      }
     >
       <Link
         to="/vehiculos"

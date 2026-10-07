@@ -11,7 +11,7 @@ import {
   updateOrder as updateOrderFn,
 } from "@/lib/server/orders.functions";
 import { createPart, listPartsCatalog } from "@/lib/server/parts.functions";
-import { createVehicle, listVehicles } from "@/lib/server/vehicles.functions";
+import { createVehicle, deleteVehicle, listVehicles } from "@/lib/server/vehicles.functions";
 import type { Customer, PartCatalogItem, Vehicle, WorkOrder } from "@/lib/taller-data";
 import { errorMessage } from "@/lib/utils";
 
@@ -44,6 +44,8 @@ type DataContextValue = {
   addPart: (part: Omit<PartCatalogItem, "workshopId" | "id">) => Promise<PartCatalogItem>;
   /** Also deletes the customer's vehicles and orders server-side (no "archive" yet). */
   removeCustomer: (customerId: string) => Promise<void>;
+  /** Also deletes the vehicle's orders server-side (no "archive" yet). */
+  removeVehicle: (vehicleId: string) => Promise<void>;
   removeOrder: (orderId: string) => Promise<void>;
   setMonthlyGoal: (amount: number) => void;
 };
@@ -141,6 +143,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     mutationFn: (orderId: string) => deleteOrderFn({ data: { orderId } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ordersKey }),
   });
+  const deleteVehicleMutation = useMutation({
+    mutationFn: (vehicleId: string) => deleteVehicle({ data: { vehicleId } }),
+    onSuccess: () => {
+      // Cascades server-side to the vehicle's orders too.
+      queryClient.invalidateQueries({ queryKey: ["workshop", workshopId, "vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ordersKey });
+    },
+  });
 
   // orderId -> latest not-yet-sent order state, and orderId -> pending debounce
   // timer. Both outlive individual renders (refs, not state) since neither
@@ -216,6 +226,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateOrder,
     addPart: (part) => createPartMutation.mutateAsync(part),
     removeCustomer: (customerId) => deleteCustomerMutation.mutateAsync(customerId),
+    removeVehicle: (vehicleId) => deleteVehicleMutation.mutateAsync(vehicleId),
     removeOrder: (orderId) => deleteOrderMutation.mutateAsync(orderId),
     setMonthlyGoal: (amount) => {
       if (!workshopId) return;
