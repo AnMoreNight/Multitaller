@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, ShieldCheck, Trash2, Wrench } from "lucide-react";
+import { KeyRound, Plus, ShieldCheck, Trash2, Wrench } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -7,6 +7,8 @@ import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { CheckboxRow, Dialog, Field, SelectField } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth, type WorkshopRole } from "@/lib/auth";
+import type { AppUser } from "@/lib/taller-data";
+import { errorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/equipo")({
   head: () => ({
@@ -27,7 +29,7 @@ const roleOptions: { value: string; label: string }[] = [
 ];
 
 function TeamPage() {
-  const { user, users, addUser, updateUser, removeUser } = useRequireAuth();
+  const { user, users, addUser, updateUser, removeUser, resetTeammatePassword } = useRequireAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -38,6 +40,11 @@ function TeamPage() {
     role: "worker" as WorkshopRole,
     canChangeOrderStatus: true,
   });
+
+  const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   if (!user) return null;
   if (user.role !== "admin") {
@@ -95,6 +102,30 @@ function TeamPage() {
       await removeUser(memberId);
     } catch {
       toast.error("No se pudo quitar al miembro del equipo.");
+    }
+  }
+
+  function closeResetDialog() {
+    setResetTarget(null);
+    setResetPassword("");
+    setResetConfirm("");
+  }
+
+  async function submitPasswordReset() {
+    if (!resetTarget) return;
+    if (resetPassword !== resetConfirm) {
+      toast.error("Las contraseñas no coinciden.");
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      await resetTeammatePassword(resetTarget.id, resetPassword);
+      toast.success(`Contraseña de ${resetTarget.name} actualizada.`);
+      closeResetDialog();
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo restablecer la contraseña. Intenta de nuevo."));
+    } finally {
+      setResetSubmitting(false);
     }
   }
 
@@ -160,6 +191,16 @@ function TeamPage() {
                   onChange={(checked) => handleUpdate(member.id, { canChangeOrderStatus: checked })}
                 />
               </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Restablecer contraseña de ${member.name}`}
+                disabled={isSelf}
+                onClick={() => setResetTarget(member)}
+              >
+                <KeyRound className="size-4" />
+              </Button>
 
               <Button
                 variant="ghost"
@@ -250,6 +291,54 @@ function TeamPage() {
             >
               <Plus className="size-4" />
               {submitting ? "Guardando…" : "Guardar miembro"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        title={
+          resetTarget ? `Restablecer contraseña de ${resetTarget.name}` : "Restablecer contraseña"
+        }
+        open={resetTarget !== null}
+        onClose={closeResetDialog}
+      >
+        <div className="grid gap-4 p-5">
+          <p className="text-xs text-muted-foreground">
+            Úsalo si {resetTarget?.name ?? "el usuario"} olvidó su contraseña y no puede recuperarla
+            por su cuenta. Se cerrarán todas sus sesiones activas y deberá iniciar sesión con la
+            contraseña nueva.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Contraseña nueva"
+              name="resetPassword"
+              type="password"
+              placeholder="Mínimo 8 caracteres"
+              value={resetPassword}
+              onChange={(event) => setResetPassword(event.target.value)}
+              required
+            />
+            <Field
+              label="Confirmar contraseña"
+              name="resetConfirm"
+              type="password"
+              value={resetConfirm}
+              onChange={(event) => setResetConfirm(event.target.value)}
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={closeResetDialog}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={submitPasswordReset}
+              disabled={resetPassword.length < 8 || !resetConfirm || resetSubmitting}
+            >
+              <KeyRound className="size-4" />
+              {resetSubmitting ? "Guardando…" : "Restablecer contraseña"}
             </Button>
           </div>
         </div>

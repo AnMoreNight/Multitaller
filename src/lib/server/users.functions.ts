@@ -94,6 +94,33 @@ export const updateUser = createServerFn({ method: "POST" })
     return toAppUser(row);
   });
 
+// There's no self-service "forgot password" flow yet (no email provider is
+// configured) -- an admin resetting a locked-out teammate's password
+// directly, the same way they set its initial value in createUser, is the
+// recovery path until that exists.
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .validator(z.object({ userId: z.string().uuid(), newPassword: z.string().min(8) }))
+  .handler(async ({ context, data }) => {
+    const db = getDb();
+    const target = await db.query.users.findFirst({ where: eq(users.id, data.userId) });
+    if (!target || target.workshopId !== context.workshopId) {
+      throw new Error("Usuario no encontrado en este taller");
+    }
+    if (target.id === context.user.id) {
+      // Bypassing current-password verification for your own account is a
+      // real privilege escalation risk if a session is ever compromised --
+      // use "Cambiar contraseña" in Mi perfil instead, which requires it.
+      throw new Error("Usa 'Cambiar contraseña' en Mi perfil para tu propia cuenta");
+    }
+    const passwordHash = await hash(data.newPassword, 12);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, data.userId));
+    // The teammate's existing session(s) trusted the old password -- force a
+    // fresh login so a reset actually locks out anyone who had it before.
+    await revokeAllSessionsForUser(target.id);
+    return { ok: true };
+  });
+
 export const removeUser = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .validator(z.object({ userId: z.string().uuid() }))

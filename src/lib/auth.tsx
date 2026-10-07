@@ -13,6 +13,7 @@ import {
   createUser,
   listUsers,
   removeUser as removeUserFn,
+  resetUserPassword,
   updateUser as updateUserFn,
 } from "@/lib/server/users.functions";
 import type { AppUser, Role } from "@/lib/taller-data";
@@ -51,6 +52,9 @@ type AuthContextValue = {
   removeUser: (userId: string) => Promise<void>;
   /** Re-verifies currentPassword server-side; signs the user out of every session on success. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Admin-only recovery path for a locked-out teammate — no email provider
+   * is configured yet, so there's no self-service "forgot password" flow. */
+  resetTeammatePassword: (userId: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -118,6 +122,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => queryClient.clear(),
   });
 
+  const resetTeammatePasswordMutation = useMutation({
+    mutationFn: (input: { userId: string; newPassword: string }) =>
+      resetUserPassword({ data: input }),
+  });
+
   async function login(email: string, password: string) {
     await loginMutation.mutateAsync({ email, password });
   }
@@ -136,10 +145,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function changePassword(currentPassword: string, newPassword: string) {
     await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
   }
+  async function resetTeammatePassword(userId: string, newPassword: string) {
+    await resetTeammatePasswordMutation.mutateAsync({ userId, newPassword });
+  }
 
   return (
     <AuthContext.Provider
-      value={{ user, users, ready, login, logout, updateUser, addUser, removeUser, changePassword }}
+      value={{
+        user,
+        users,
+        ready,
+        login,
+        logout,
+        updateUser,
+        addUser,
+        removeUser,
+        changePassword,
+        resetTeammatePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

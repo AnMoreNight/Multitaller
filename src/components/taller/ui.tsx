@@ -239,10 +239,28 @@ export function SelectField({
   placeholder?: string;
   disabled?: boolean;
 }) {
+  // Radix's SelectValue only resolves a controlled value's label once its
+  // matching SelectItem has actually mounted (i.e. after the dropdown has
+  // been opened at least once) -- a value set programmatically, before any
+  // user interaction, shows blank instead of the right label. Passing the
+  // label explicitly as children sidesteps that lookup entirely.
+  const selectedLabel = options.find((option) => option.value === value)?.label;
   const control = (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select
+      value={value}
+      // Radix also self-fires onValueChange("") once, shortly after a
+      // controlled value is set programmatically and before its item has
+      // registered -- harmless to Radix's own internal state, but fatal
+      // here since a controlled consumer would store that "" permanently.
+      // None of this app's options are ever legitimately empty, so this is
+      // always that spurious reset, never a real user selection.
+      onValueChange={(next) => {
+        if (next) onChange(next);
+      }}
+      disabled={disabled}
+    >
       <SelectTrigger className="h-10 bg-background">
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>{selectedLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (
