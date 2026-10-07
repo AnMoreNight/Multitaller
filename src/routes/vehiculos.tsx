@@ -9,7 +9,7 @@ import { Dialog, Field } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { optional } from "@/lib/utils";
+import { errorMessage, optional } from "@/lib/utils";
 import { getCustomer, lastServiceLabel, vehicleLabel } from "@/lib/work-order";
 
 export const Route = createFileRoute("/vehiculos")({
@@ -104,8 +104,8 @@ function VehiclesPage() {
       setDialogOpen(false);
       resetForm();
       toast.success("Vehículo registrado.");
-    } catch {
-      toast.error("No se pudo registrar el vehículo. Intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo registrar el vehículo. Intenta de nuevo."));
     }
   }
 

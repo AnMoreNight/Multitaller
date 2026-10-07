@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
-import { optional } from "@/lib/utils";
+import { errorMessage, optional } from "@/lib/utils";
 
 export const Route = createFileRoute("/repuestos")({
   head: () => ({
@@ -90,8 +90,8 @@ function PartsPage() {
       setDialogOpen(false);
       resetForm();
       toast.success("Repuesto agregado.");
-    } catch {
-      toast.error("No se pudo agregar el repuesto. Intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo agregar el repuesto. Intenta de nuevo."));
     }
   }
 

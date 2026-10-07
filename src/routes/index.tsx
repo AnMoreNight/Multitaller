@@ -11,7 +11,7 @@ import { Dialog, Field, StatCard } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn, optional } from "@/lib/utils";
+import { cn, errorMessage, optional } from "@/lib/utils";
 import { formatMoney } from "@/lib/taller-data";
 import { orderTotal, todayISO } from "@/lib/work-order";
 
@@ -66,8 +66,8 @@ function WorkshopDashboard() {
       });
       setDialog(null);
       toast.success("Cliente agregado.");
-    } catch {
-      toast.error("No se pudo agregar el cliente. Intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo agregar el cliente. Intenta de nuevo."));
     }
   }
 

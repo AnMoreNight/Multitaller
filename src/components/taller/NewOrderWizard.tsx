@@ -8,7 +8,7 @@ import { CheckboxRow, Dialog, Field, SelectField, TextareaField } from "@/compon
 import { Button } from "@/components/ui/button";
 import { useData } from "@/lib/store";
 import { warningLightOptions, type WarningLight } from "@/lib/taller-data";
-import { optional } from "@/lib/utils";
+import { errorMessage, optional } from "@/lib/utils";
 import { todayISO, vehiclesForCustomer } from "@/lib/work-order";
 
 type VehicleSelection =
@@ -117,8 +117,8 @@ export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () =
       close();
       toast.success(`Orden ${order.id} creada.`);
       navigate({ to: "/ordenes/$orderId", params: { orderId: order.id } });
-    } catch {
-      toast.error("No se pudo crear la orden. Intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo crear la orden. Intenta de nuevo."));
     }
   }
 

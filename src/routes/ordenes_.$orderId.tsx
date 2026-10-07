@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn, generateId } from "@/lib/utils";
+import { cn, errorMessage, generateId } from "@/lib/utils";
 import { formatMoney, type LaborItem, type PartLine, type WorkOrder } from "@/lib/taller-data";
 import {
   formatDate,
@@ -190,8 +190,8 @@ function OrderDetailPage() {
         applyMaterialsFee: false,
       });
       navigate({ to: "/ordenes/$orderId", params: { orderId: created.id } });
-    } catch {
-      toast.error("No se pudo crear la visita de garantía. Intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err, "No se pudo crear la visita de garantía. Intenta de nuevo."));
     }
   }
 

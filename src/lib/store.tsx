@@ -12,6 +12,7 @@ import {
 import { createPart, listPartsCatalog } from "@/lib/server/parts.functions";
 import { createVehicle, listVehicles } from "@/lib/server/vehicles.functions";
 import type { Customer, PartCatalogItem, Vehicle, WorkOrder } from "@/lib/taller-data";
+import { errorMessage } from "@/lib/utils";
 
 // Real Postgres data now (see src/lib/server/*.functions.ts), scoped by the
 // signed-in user's workshopId server-side — never a client-supplied one, so
@@ -172,8 +173,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
               (current ?? []).map((order) => (order.id === orderId ? saved : order)),
             );
           })
-          .catch(() => {
-            toast.error("No se pudo guardar el último cambio en la orden. Intenta de nuevo.");
+          .catch((err: unknown) => {
+            toast.error(
+              errorMessage(
+                err,
+                "No se pudo guardar el último cambio en la orden. Intenta de nuevo.",
+              ),
+            );
             queryClient.invalidateQueries({ queryKey: ordersKey });
           });
       }, UPDATE_ORDER_DEBOUNCE_MS),

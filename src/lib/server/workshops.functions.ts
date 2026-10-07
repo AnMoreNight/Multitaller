@@ -23,7 +23,7 @@ export const createWorkshop = createServerFn({ method: "POST" })
       name: z.string().min(1),
       adminName: z.string().min(1),
       adminTitle: z.string().min(1),
-      adminEmail: z.string().email(),
+      adminEmail: z.string().trim().email(),
       adminPassword: z.string().min(8),
     }),
   )

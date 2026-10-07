@@ -26,7 +26,7 @@ export const createCustomer = createServerFn({ method: "POST" })
     z.object({
       name: z.string().min(1),
       phone: z.string().min(1),
-      email: z.string().email().optional(),
+      email: z.string().trim().email().optional(),
       notes: z.string().optional(),
     }),
   )

@@ -27,7 +27,7 @@ export const createUser = createServerFn({ method: "POST" })
       title: z.string().min(1),
       role: z.enum(["admin", "worker"]),
       canChangeOrderStatus: z.boolean(),
-      email: z.string().email(),
+      email: z.string().trim().email(),
       password: z.string().min(8),
     }),
   )

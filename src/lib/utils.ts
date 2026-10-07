@@ -17,6 +17,31 @@ export function optional<K extends string, V>(
   return (value ? { [key]: value } : {}) as { [P in K]?: V };
 }
 
+/** Server functions throw plain Errors with a user-facing Spanish message
+ * (wrong credentials, permission denied, not found, etc.) — surface that
+ * instead of a one-size-fits-all fallback so a failure is actionable.
+ * A `.validator()` rejection, by contrast, arrives as a raw JSON-stringified
+ * array of zod issues (TanStack Start's default) — pull just the first
+ * issue's message out of that instead of dumping the array in a toast. */
+export function errorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error) || !err.message) return fallback;
+  const zodIssueMessage = firstZodIssueMessage(err.message);
+  return zodIssueMessage ?? err.message;
+}
+
+function firstZodIssueMessage(message: string): string | null {
+  if (!message.startsWith("[")) return null;
+  try {
+    const issues: unknown = JSON.parse(message);
+    if (!Array.isArray(issues)) return null;
+    const first = issues[0] as { message?: unknown } | undefined;
+    if (typeof first?.message !== "string") return null;
+    return first.message === "Invalid email" ? "Correo electrónico inválido." : first.message;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * crypto.randomUUID() only exists in a secure context (HTTPS or localhost) —
  * browsers omit it entirely over plain HTTP, which throws `crypto.randomUUID

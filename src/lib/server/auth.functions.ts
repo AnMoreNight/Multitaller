@@ -31,7 +31,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 export const login = createServerFn({ method: "POST" })
-  .validator(z.object({ email: z.string().email(), password: z.string().min(1) }))
+  .validator(z.object({ email: z.string().trim().email(), password: z.string().min(1) }))
   .handler(async ({ data }) => {
     const db = getDb();
     const userRow = await db.query.users.findFirst({
