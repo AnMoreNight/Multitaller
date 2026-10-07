@@ -291,6 +291,69 @@ each gets its own `DATABASE_URL`. Whichever branch changes, remember:
 hand (or in CI) against that branch's `DATABASE_URL` whenever the schema
 changes; Vercel and the VPS both just run the already-built app.
 
+### Resetting a database (staging or local)
+
+Useful when staging's data has drifted too far from something testable, or
+you just want a clean slate. **Never run this against the production
+`DATABASE_URL`** — it deletes everything, no undo.
+
+Point a one-off command at a specific database without touching your `.env`
+or the current shell's environment:
+
+```powershell
+# PowerShell
+$env:DATABASE_URL = "postgresql://...the target database..."
+npm run db:migrate
+```
+
+```bash
+# bash
+DATABASE_URL='postgresql://...the target database...' npm run db:migrate
+```
+
+To actually wipe a database before re-migrating, drop **both** schemas —
+`public` (the app's tables) and `drizzle` (drizzle-kit's own migration
+tracking table). Dropping only `public` leaves the tracking table believing
+every migration is already applied, so `db:migrate` reports success without
+recreating anything, and every query then fails with
+`relation "users" does not exist`. This is exactly what happened the first
+time a staging reset was attempted — the fix was to drop `drizzle` too, then
+`db:migrate` actually recreated the tables.
+
+```powershell
+# PowerShell — paste as one block
+@'
+import { neon } from "@neondatabase/serverless";
+const sql = neon(process.env.DATABASE_URL);
+await sql`DROP SCHEMA public CASCADE`;
+await sql`CREATE SCHEMA public`;
+await sql`DROP SCHEMA IF EXISTS drizzle CASCADE`;
+console.log("Schemas reset.");
+'@ | Set-Content -Encoding utf8 reset-db.tmp.mjs
+node reset-db.tmp.mjs
+Remove-Item reset-db.tmp.mjs
+npm run db:migrate
+npm run db:seed
+```
+
+After `db:seed` finishes you'll have the same three accounts as a fresh
+local setup: `admin@ferrotaller.dev` (system_admin), `andrea@ferrotaller.dev`
+(admin), `jorge@ferrotaller.dev` (worker) — all `changeme123`.
+
+To check what's actually in a database without going through the app (e.g.
+to confirm a reset worked, or that migrate actually created tables):
+
+```powershell
+@'
+import { neon } from "@neondatabase/serverless";
+const sql = neon(process.env.DATABASE_URL);
+const tables = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`;
+console.log("Tables:", tables.map(t => t.table_name));
+'@ | Set-Content -Encoding utf8 check-db.tmp.mjs
+node check-db.tmp.mjs
+Remove-Item check-db.tmp.mjs
+```
+
 ## What's next
 
 Customers, vehicles, work orders, and the parts catalog are still static
