@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Package, Plus, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { Dialog, Field } from "@/components/taller/ui";
@@ -88,6 +89,7 @@ function PartsPage() {
     });
     setDialogOpen(false);
     resetForm();
+    toast.success("Repuesto agregado.");
   }
 
   return (

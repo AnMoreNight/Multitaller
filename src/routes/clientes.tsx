@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Mail, Phone, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { Dialog, Field, TextareaField } from "@/components/taller/ui";
@@ -78,6 +79,7 @@ function CustomersPage() {
     });
     setDialogOpen(false);
     resetForm();
+    toast.success("Cliente agregado.");
   }
 
   return (

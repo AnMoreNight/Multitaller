@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CarFront, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/taller/AppShell";
 import { CustomerPicker, type CustomerSelection } from "@/components/taller/CustomerPicker";
@@ -104,6 +105,7 @@ function VehiclesPage() {
 
     setDialogOpen(false);
     resetForm();
+    toast.success("Vehículo registrado.");
   }
 
   return (

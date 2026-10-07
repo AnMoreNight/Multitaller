@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { CustomerPicker, type CustomerSelection } from "@/components/taller/CustomerPicker";
 import { CheckboxRow, Dialog, Field, SelectField, TextareaField } from "@/components/taller/ui";
@@ -121,6 +122,7 @@ export function NewOrderWizard({ open, onClose }: { open: boolean; onClose: () =
     });
 
     close();
+    toast.success(`Orden ${orderId} creada.`);
     navigate({ to: "/ordenes/$orderId", params: { orderId } });
   }
 

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Plus, Users } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { AgendaCalendar } from "@/components/taller/AgendaCalendar";
 import { AppShell } from "@/components/taller/AppShell";
@@ -64,6 +65,7 @@ function WorkshopDashboard() {
       ...optional("email", email),
     });
     setDialog(null);
+    toast.success("Cliente agregado.");
   }
 
   return (
