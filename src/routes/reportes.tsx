@@ -3,9 +3,9 @@ import { useMemo } from "react";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
 import { RevenueCalendar } from "@/components/taller/RevenueCalendar";
+import { StatCard } from "@/components/taller/ui";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/taller-data";
 import {
   billedStatuses,
@@ -89,48 +89,51 @@ function ReportsPage() {
 
   const maxService = Math.max(...stats.topServices.map(([, amount]) => amount), 1);
 
+  const indicators = [
+    {
+      label: "Facturado esta semana",
+      value: formatMoney(stats.weekTotal),
+      note: "labor + repuestos + diagnóstico + tarifa",
+      color: "text-foreground",
+    },
+    {
+      label: "Cobrado en órdenes completadas",
+      value: formatMoney(stats.completedRevenue),
+      note: `${stats.completedCount} órdenes completadas o entregadas`,
+      color: "text-status-success",
+    },
+    {
+      label: "Ticket medio",
+      value: formatMoney(stats.averageOrder),
+      note: "por orden completada o entregada",
+      color: "text-foreground",
+    },
+    {
+      label: "Costo en repuestos",
+      value: formatMoney(stats.partsCost),
+      note: "precio de compra al taller",
+      color: "text-foreground",
+    },
+    {
+      label: "Margen bruto estimado",
+      value: formatMoney(stats.grossProfit),
+      note: "mano de obra + margen de repuestos",
+      color: "text-status-success",
+    },
+  ];
+
   return (
     <AppShell title="Reportes" subtitle="Facturación y rendimiento básico del taller">
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-3" aria-label="Indicadores">
-        {[
-          [
-            "Facturado esta semana",
-            formatMoney(stats.weekTotal),
-            "labor + repuestos + diagnóstico + tarifa",
-            "text-foreground",
-          ],
-          [
-            "Cobrado en órdenes completadas",
-            formatMoney(stats.completedRevenue),
-            `${stats.completedCount} órdenes completadas o entregadas`,
-            "text-status-success",
-          ],
-          [
-            "Ticket medio",
-            formatMoney(stats.averageOrder),
-            "por orden completada o entregada",
-            "text-foreground",
-          ],
-          [
-            "Costo en repuestos",
-            formatMoney(stats.partsCost),
-            "precio de compra al taller",
-            "text-foreground",
-          ],
-          [
-            "Margen bruto estimado",
-            formatMoney(stats.grossProfit),
-            "mano de obra + margen de repuestos",
-            "text-status-success",
-          ],
-        ].map(([label, value, note, color]) => (
-          <article key={label} className="rounded-lg border border-border bg-card/90 p-4">
-            <p className="font-mono text-[9px] uppercase text-muted-foreground">{label}</p>
-            <p className={cn("mt-1 font-mono text-2xl font-semibold sm:text-3xl", color)}>
-              {value}
-            </p>
-            <p className="mt-1 truncate text-xs text-muted-foreground">{note}</p>
-          </article>
+        {indicators.map(({ label, value, note, color }) => (
+          <StatCard
+            key={label}
+            label={label}
+            value={value}
+            description={note}
+            valueClassName={color}
+            descriptionClassName="truncate"
+          />
         ))}
       </section>
 

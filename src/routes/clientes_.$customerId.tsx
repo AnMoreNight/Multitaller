@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CarFront, Mail, Phone } from "lucide-react";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
-import { StatusBadge } from "@/components/taller/ui";
+import { StatCard, StatusBadge } from "@/components/taller/ui";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
 import { formatMoney } from "@/lib/taller-data";
@@ -81,11 +81,11 @@ function CustomerDetailPage() {
             </p>
           )}
         </article>
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Total facturado</p>
-          <p className="mt-1 font-mono text-2xl font-semibold">{formatMoney(totalSpent)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{history.length} órdenes en total</p>
-        </article>
+        <StatCard
+          label="Total facturado"
+          value={formatMoney(totalSpent)}
+          description={`${history.length} ${history.length === 1 ? "orden" : "órdenes"} en total`}
+        />
       </section>
 
       <section className="rounded-lg border border-border bg-card/90 p-4 sm:p-5">

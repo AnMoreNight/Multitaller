@@ -118,9 +118,12 @@ export function AgendaCalendar({ orders, vehicles }: { orders: WorkOrder[]; vehi
               Resumen del día
             </p>
             <div className="space-y-1.5">
-              <p className="flex items-center gap-2 text-xs">
-                <span className="size-2 rounded-full bg-foreground/60" />
-                <span>
+              <p
+                className="flex items-center gap-2 text-xs"
+                aria-label={`${dayOrders.length} ${dayOrders.length === 1 ? "orden programada" : "órdenes programadas"}`}
+              >
+                <span className="size-2 rounded-full bg-foreground/60" aria-hidden="true" />
+                <span aria-hidden="true">
                   <span className="font-semibold">{dayOrders.length}</span>{" "}
                   <span className="text-muted-foreground">
                     {dayOrders.length === 1 ? "orden programada" : "órdenes programadas"}
@@ -128,9 +131,16 @@ export function AgendaCalendar({ orders, vehicles }: { orders: WorkOrder[]; vehi
                 </span>
               </p>
               {summary.map((row) => (
-                <p key={row.status} className="flex items-center gap-2 text-xs">
-                  <span className={cn("size-2 rounded-full", statusDot[row.status])} />
-                  <span>
+                <p
+                  key={row.status}
+                  className="flex items-center gap-2 text-xs"
+                  aria-label={`${row.count} ${row.status}`}
+                >
+                  <span
+                    className={cn("size-2 rounded-full", statusDot[row.status])}
+                    aria-hidden="true"
+                  />
+                  <span aria-hidden="true">
                     <span className="font-semibold">{row.count}</span>{" "}
                     <span className="text-muted-foreground">{row.status}</span>
                   </span>

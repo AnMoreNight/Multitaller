@@ -7,7 +7,7 @@ import { AgendaCalendar } from "@/components/taller/AgendaCalendar";
 import { AppShell } from "@/components/taller/AppShell";
 import { NewOrderWizard } from "@/components/taller/NewOrderWizard";
 import { OrdersTable } from "@/components/taller/OrdersTable";
-import { Dialog, Field } from "@/components/taller/ui";
+import { Dialog, Field, StatCard } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
@@ -98,35 +98,25 @@ function WorkshopDashboard() {
         )}
         aria-label="Resumen del taller"
       >
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">En proceso</p>
-          <p className="mt-1 font-mono text-2xl font-semibold sm:text-3xl">{inProcess}</p>
-          <p className="mt-1 text-xs text-muted-foreground">vehículos en el taller ahora</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Esperando repuesto</p>
-          <p className="mt-1 font-mono text-2xl font-semibold text-status-waiting sm:text-3xl">
-            {waitingForParts}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">a la espera de piezas</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">
-            Listas para entregar
-          </p>
-          <p className="mt-1 font-mono text-2xl font-semibold text-status-success sm:text-3xl">
-            {readyForPickup}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">completadas, sin entregar</p>
-        </article>
+        <StatCard label="En proceso" value={inProcess} description="vehículos en el taller ahora" />
+        <StatCard
+          label="Esperando repuesto"
+          value={waitingForParts}
+          description="a la espera de piezas"
+          valueClassName="text-status-waiting"
+        />
+        <StatCard
+          label="Listas para entregar"
+          value={readyForPickup}
+          description="completadas, sin entregar"
+          valueClassName="text-status-success"
+        />
         {user.role === "admin" && (
-          <article className="rounded-lg border border-border bg-card/90 p-4">
-            <p className="font-mono text-[9px] uppercase text-muted-foreground">Facturado hoy</p>
-            <p className="mt-1 font-mono text-2xl font-semibold sm:text-3xl">
-              {formatMoney(todayRevenue)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">órdenes entregadas hoy</p>
-          </article>
+          <StatCard
+            label="Facturado hoy"
+            value={formatMoney(todayRevenue)}
+            description="órdenes entregadas hoy"
+          />
         )}
       </section>
 
@@ -136,7 +126,7 @@ function WorkshopDashboard() {
         <div className="mb-4">
           <h2 className="font-display text-2xl font-semibold">Órdenes activas</h2>
           <p className="text-xs text-muted-foreground">
-            {activeOrders.length} vehículos en proceso o pendientes
+            {`${activeOrders.length} vehículos en proceso o pendientes`}
           </p>
         </div>
         <OrdersTable

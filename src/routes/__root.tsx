@@ -118,7 +118,11 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      {/* Inline, not just the stylesheet's `body { background }` rule — a slow
+          cold start (Vercel function + Neon both waking up) can mean the HTML
+          itself takes a moment to arrive, and once it does, nothing should
+          flash white while styles.css is still loading. */}
+      <body style={{ backgroundColor: "oklch(0.167 0.02 249)", color: "oklch(0.94 0.012 242)" }}>
         {children}
         <Scripts />
       </body>

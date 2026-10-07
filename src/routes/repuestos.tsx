@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell, RestrictedAccess } from "@/components/taller/AppShell";
-import { Dialog, Field } from "@/components/taller/ui";
+import { Dialog, Field, StatCard } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
@@ -104,23 +104,18 @@ function PartsPage() {
       }
     >
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-3" aria-label="Resumen del catálogo">
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Referencias</p>
-          <p className="mt-1 font-mono text-2xl font-semibold sm:text-3xl">{partsCatalog.length}</p>
-          <p className="mt-1 text-xs text-muted-foreground">en catálogo</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Margen promedio</p>
-          <p className="mt-1 font-mono text-2xl font-semibold text-status-success sm:text-3xl">
-            {formatMoney(averageMargin)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">por repuesto vendido</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card/90 p-4">
-          <p className="font-mono text-[9px] uppercase text-muted-foreground">Con garantía</p>
-          <p className="mt-1 font-mono text-2xl font-semibold sm:text-3xl">{withWarranty}</p>
-          <p className="mt-1 text-xs text-muted-foreground">de {partsCatalog.length} referencias</p>
-        </article>
+        <StatCard label="Referencias" value={partsCatalog.length} description="en catálogo" />
+        <StatCard
+          label="Margen promedio"
+          value={formatMoney(averageMargin)}
+          description="por repuesto vendido"
+          valueClassName="text-status-success"
+        />
+        <StatCard
+          label="Con garantía"
+          value={withWarranty}
+          description={`de ${partsCatalog.length} referencias`}
+        />
       </section>
 
       <div className="relative w-full sm:max-w-xs">

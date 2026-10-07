@@ -149,8 +149,7 @@ function CustomersPage() {
                   </div>
                   <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
                     <span className="text-muted-foreground">
-                      {vehiclesForCustomer(vehicles, customer.id).length} vehículos ·{" "}
-                      {customerOrders.length} órdenes
+                      {`${vehiclesForCustomer(vehicles, customer.id).length} vehículos · ${customerOrders.length} órdenes`}
                     </span>
                     <span className="font-mono font-semibold">{formatMoney(spent)}</span>
                   </div>

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/taller/AppShell";
 import { NewOrderWizard } from "@/components/taller/NewOrderWizard";
 import { OrdersTable } from "@/components/taller/OrdersTable";
-import { StatusBadge } from "@/components/taller/ui";
+import { StatCard, StatusBadge } from "@/components/taller/ui";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/lib/auth";
 import { useData } from "@/lib/store";
@@ -84,13 +84,13 @@ function OrdersPage() {
     >
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-5" aria-label="Resumen por estado">
         {orderStatusFlow.map((status) => (
-          <article key={status} className="rounded-lg border border-border bg-card/90 p-4">
-            <StatusBadge status={status} />
-            <p className="mt-2 font-mono text-2xl font-semibold sm:text-3xl">
-              {totals.get(status) ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">órdenes en este estado</p>
-          </article>
+          <StatCard
+            key={status}
+            label={<StatusBadge status={status} />}
+            srLabel={status}
+            value={totals.get(status) ?? 0}
+            description="órdenes en este estado"
+          />
         ))}
       </section>
 

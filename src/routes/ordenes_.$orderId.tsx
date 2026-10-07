@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CarFront, Plus, ShieldCheck, Trash2, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/taller/AppShell";
 import { CheckboxRow, Field, StatusBadge, StatusSelect } from "@/components/taller/ui";
@@ -87,10 +88,24 @@ function OrderDetailPage() {
     }));
   }
   function removeLabor(id: string) {
+    const index = order!.labor.findIndex((item) => item.id === id);
+    if (index === -1) return;
+    const removed = order!.labor[index]!;
     patch((draft) => ({
       ...draft,
       labor: draft.labor.filter((item) => item.id !== id),
     }));
+    toast("Mano de obra eliminada", {
+      action: {
+        label: "Deshacer",
+        onClick: () =>
+          patch((draft) => {
+            const labor = [...draft.labor];
+            labor.splice(index, 0, removed);
+            return { ...draft, labor };
+          }),
+      },
+    });
   }
 
   function addPartLine() {
@@ -135,10 +150,24 @@ function OrderDetailPage() {
     }));
   }
   function removePartLine(id: string) {
+    const index = order!.parts.findIndex((item) => item.id === id);
+    if (index === -1) return;
+    const removed = order!.parts[index]!;
     patch((draft) => ({
       ...draft,
       parts: draft.parts.filter((item) => item.id !== id),
     }));
+    toast("Repuesto eliminado", {
+      action: {
+        label: "Deshacer",
+        onClick: () =>
+          patch((draft) => {
+            const parts = [...draft.parts];
+            parts.splice(index, 0, removed);
+            return { ...draft, parts };
+          }),
+      },
+    });
   }
 
   function createWarrantyVisit() {

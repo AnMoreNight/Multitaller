@@ -624,5 +624,5 @@ export const statusDot: Record<OrderStatus, string> = {
 
 export function formatMoney(amount: number): string {
   const hasCents = Math.round(amount * 100) % 100 !== 0;
-  return `$${amount.toLocaleString("es-ES", { minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 })}`;
+  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 })}`;
 }

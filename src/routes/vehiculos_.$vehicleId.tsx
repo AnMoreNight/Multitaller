@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CarFront } from "lucide-react";
+import { useId } from "react";
 
 import { AppShell } from "@/components/taller/AppShell";
 import { StatusBadge } from "@/components/taller/ui";
@@ -23,6 +24,9 @@ function VehicleDetailPage() {
   const { user } = useRequireAuth();
   const { vehicleId } = Route.useParams();
   const { customers, vehicles, orders } = useData();
+  const vinLabelId = useId();
+  const colorLabelId = useId();
+  const yearLabelId = useId();
 
   if (!user) return null;
 
@@ -71,16 +75,24 @@ function VehicleDetailPage() {
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-muted-foreground">VIN</dt>
-              <dd className="font-mono">{vehicle.vin ?? "—"}</dd>
+              <dt id={vinLabelId} className="text-xs text-muted-foreground">
+                VIN
+              </dt>
+              <dd aria-labelledby={vinLabelId} className="font-mono">
+                {vehicle.vin ?? "—"}
+              </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Color</dt>
-              <dd>{vehicle.color ?? "—"}</dd>
+              <dt id={colorLabelId} className="text-xs text-muted-foreground">
+                Color
+              </dt>
+              <dd aria-labelledby={colorLabelId}>{vehicle.color ?? "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Año</dt>
-              <dd>{vehicle.year}</dd>
+              <dt id={yearLabelId} className="text-xs text-muted-foreground">
+                Año
+              </dt>
+              <dd aria-labelledby={yearLabelId}>{`${vehicle.year}`}</dd>
             </div>
           </dl>
           {vehicle.notes && (

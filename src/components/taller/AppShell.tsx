@@ -117,7 +117,7 @@ function MonthlyGoalWidget() {
         <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
-        {daysLeft} {daysLeft === 1 ? "día restante" : "días restantes"}
+        {`${daysLeft} ${daysLeft === 1 ? "día restante" : "días restantes"}`}
       </p>
     </div>
   );

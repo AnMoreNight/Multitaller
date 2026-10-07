@@ -1,6 +1,12 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { ChevronDown, X } from "lucide-react";
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import {
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +33,50 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
+/**
+ * Label / big number / description, stacked on three lines inside a card —
+ * the pattern repeated across the dashboard, Órdenes, Repuestos and Reportes.
+ * Each line used to be its own sibling <p>, which looks fine visually but
+ * gives screen readers (and anything else that reads the computed accessible
+ * name) no separator between them — adjacent text nodes get their edge
+ * whitespace trimmed before concatenating, so "8" next to " vehículos en
+ * proceso" is announced as "8vehículos en proceso". The explicit `aria-label`
+ * here is a single string with no node boundaries to trim, so it reads
+ * correctly regardless of how the visible lines are split up.
+ */
+export function StatCard({
+  label,
+  srLabel,
+  value,
+  description,
+  valueClassName,
+  descriptionClassName,
+}: {
+  label: ReactNode;
+  /** Plain-text accessible name when `label` isn't a plain string (e.g. a StatusBadge). */
+  srLabel?: string;
+  value: ReactNode;
+  description: string;
+  valueClassName?: string;
+  descriptionClassName?: string;
+}) {
+  const accessibleLabel = srLabel ?? (typeof label === "string" ? label : undefined);
+  return (
+    <article
+      className="rounded-lg border border-border bg-card/90 p-4"
+      {...(accessibleLabel ? { "aria-label": `${accessibleLabel}: ${value} ${description}` } : {})}
+    >
+      <div className="font-mono text-[9px] uppercase text-muted-foreground">{label}</div>
+      <p className={cn("mt-1 font-mono text-2xl font-semibold sm:text-3xl", valueClassName)}>
+        {value}
+      </p>
+      <p className={cn("mt-1 text-xs text-muted-foreground", descriptionClassName)}>
+        {description}
+      </p>
+    </article>
+  );
+}
+
 const allOrderStatuses: OrderStatus[] = [...orderStatusFlow, "Garantía"];
 
 /**
@@ -45,8 +95,25 @@ export function StatusSelect({
   status: OrderStatus;
   onChange: (status: OrderStatus) => void;
 }) {
+  // This applies the instant it's picked -- a confirmation dialog would slow
+  // down the common case (a mechanic moving an order along as work happens),
+  // but a wrong click with no way back is a real risk. A toast with an undo
+  // action covers both: no friction for the normal case, one click to
+  // recover from an accidental change.
+  function handleChange(next: OrderStatus) {
+    if (next === status) return;
+    const previous = status;
+    onChange(next);
+    toast(`Estado cambiado a "${next}"`, {
+      action: { label: "Deshacer", onClick: () => onChange(previous) },
+    });
+  }
+
   return (
-    <SelectPrimitive.Root value={status} onValueChange={(value) => onChange(value as OrderStatus)}>
+    <SelectPrimitive.Root
+      value={status}
+      onValueChange={(value) => handleChange(value as OrderStatus)}
+    >
       <SelectPrimitive.Trigger
         aria-label="Cambiar estado"
         className="group inline-flex items-center gap-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
@@ -207,6 +274,15 @@ export function CheckboxRow({
   onChange: (checked: boolean) => void;
   description?: string;
 }) {
+  // A checkbox implicitly labeled by a wrapping <label> takes its accessible
+  // name from ALL of that label's text content — including the longer
+  // `description` span below, if it's just sitting there unmarked. That
+  // folds a long explanatory sentence into the "name" instead of the
+  // "description", and accessible names (unlike descriptions) commonly get
+  // truncated by assistive tech since they're meant to be short identifiers.
+  // An explicit aria-label keeps the name to just `label`; aria-describedby
+  // correctly routes the longer text in as a description instead.
+  const descriptionId = useId();
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-background px-3 py-2.5 text-sm">
       <input
@@ -214,11 +290,15 @@ export function CheckboxRow({
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
         className="mt-0.5 size-4 accent-primary"
+        aria-label={label}
+        {...(description ? { "aria-describedby": descriptionId } : {})}
       />
       <span>
         <span className="block text-foreground">{label}</span>
         {description && (
-          <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
+          <span id={descriptionId} className="mt-0.5 block text-xs text-muted-foreground">
+            {description}
+          </span>
         )}
       </span>
     </label>
